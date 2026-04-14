@@ -3,14 +3,14 @@ import { TileContainer } from "./components/TileContainer";
 import { NodeContextMenu } from "./components/NodeContextMenu";
 import { AgentConfigModal } from "./components/AgentConfigModal";
 import { useWorkflowStore } from "./store/workflowStore";
-import { Save, FolderOpen, Plus, Moon, Sun } from "lucide-react";
+import { Plus, Menu, MenuSquare } from "lucide-react";
 
 function Sidebar({
-  isDark,
-  onToggleTheme,
+  collapsed,
+  onToggle,
 }: {
-  isDark: boolean;
-  onToggleTheme: () => void;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
   const onAddNode = useCallback(() => {
     const store = useWorkflowStore.getState();
@@ -20,38 +20,19 @@ function Sidebar({
     }
   }, []);
 
-  const onSave = async () => {
-    const store = useWorkflowStore.getState();
-    const data = store.serialize();
-    await window.electronAPI?.saveWorkflow(data);
-  };
-
-  const onLoad = async () => {
-    const result = await window.electronAPI?.loadWorkflow();
-    if (result && !result.canceled && result.data) {
-      const store = useWorkflowStore.getState();
-      store.load(result.data);
-    }
-  };
-
   return (
-    <div className="sidebar">
-      <button className="sidebar-item" onClick={onAddNode} title="Add terminal">
-        <Plus size={22} />
+    <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+      <button
+        className="sidebar-toggle"
+        onClick={onToggle}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {collapsed ? <MenuSquare size={20} /> : <Menu size={20} />}
       </button>
       <div className="sidebar-divider" />
-      <button
-        className="sidebar-item"
-        onClick={onToggleTheme}
-        title="Toggle theme"
-      >
-        {isDark ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
-      <button className="sidebar-item" onClick={onSave} title="Save workflow">
-        <Save size={18} />
-      </button>
-      <button className="sidebar-item" onClick={onLoad} title="Load workflow">
-        <FolderOpen size={18} />
+      <button className="sidebar-item" onClick={onAddNode} title="New terminal">
+        <Plus size={22} />
+        {!collapsed && <span className="sidebar-label">New</span>}
       </button>
     </div>
   );
@@ -59,9 +40,21 @@ function Sidebar({
 
 export default function App() {
   const [isDark, setIsDark] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -128,8 +121,14 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <Sidebar isDark={isDark} onToggleTheme={toggleTheme} />
-      <TileContainer />
+      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      <div
+        className={`tile-container-wrapper ${
+          sidebarCollapsed ? "sidebar-collapsed" : ""
+        }`}
+      >
+        <TileContainer />
+      </div>
 
       {contextMenuPosition && (
         <NodeContextMenu
