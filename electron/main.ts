@@ -27,17 +27,31 @@ function createPty(ptyId: string, cols: number, rows: number): void {
   }
 
   const shell = getShell();
+  const cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
+
+  const env: Record<string, string> = {};
+  for (const key of Object.keys(process.env)) {
+    const value = process.env[key];
+    if (typeof value === "string") {
+      env[key] = value;
+    }
+  }
+  env.TERM = "xterm-256color";
+  env.COLORTERM = "truecolor";
+
   const options: pty.IPtyOptions = {
     name: "xterm-256color",
     cols,
     rows,
-    cwd: process.env.HOME || os.homedir(),
-    env: process.env as Record<string, string>,
+    cwd: cwd,
+    env: env,
   };
 
   if (process.platform === "win32") {
     options.useConpty = true;
   }
+
+  log.info(`Spawning shell: ${shell} in ${cwd}`);
 
   const ptyProcess = pty.spawn(shell, [], options);
   ptyMap.set(ptyId, ptyProcess);
@@ -134,7 +148,7 @@ function createWindow(): void {
     width: 1400,
     height: 900,
     show: false,
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, "../preload/preload.mjs"),
       sandbox: false,

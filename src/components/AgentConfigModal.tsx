@@ -12,11 +12,7 @@ interface AgentConfigModalProps {
 }
 
 const defaultModels: Record<AgentProvider, string[]> = {
-  claude: [
-    "claude-sonnet-4-20250514",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-opus-20240229",
-  ],
+  claude: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022"],
   openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
   ollama: ["llama3.1", "mistral", "codellama"],
 };
@@ -41,9 +37,9 @@ export function AgentConfigModal({ nodeId, onClose }: AgentConfigModalProps) {
     existingConfig?.systemPrompt || "",
   );
 
-  const handleProviderChange = useCallback((newProvider: AgentProvider) => {
-    setProvider(newProvider);
-    setModel(defaultModels[newProvider][0]);
+  const handleProviderChange = useCallback((newProvider: string) => {
+    setProvider(newProvider as AgentProvider);
+    setModel(defaultModels[newProvider as AgentProvider][0]);
   }, []);
 
   const handleSave = useCallback(() => {
@@ -77,25 +73,19 @@ export function AgentConfigModal({ nodeId, onClose }: AgentConfigModalProps) {
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="modal-title">Configure AI Agent</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white p-1"
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <div className="modal-content" style={{ position: "relative" }}>
+        <button className="modal-close" onClick={onClose}>
+          <X size={18} />
+        </button>
+
+        <h2 className="modal-title">Configure AI Agent</h2>
 
         <div className="form-group">
           <label className="form-label">Provider</label>
           <select
             className="form-select"
             value={provider}
-            onChange={(e) =>
-              handleProviderChange(e.target.value as AgentProvider)
-            }
+            onChange={(e) => handleProviderChange(e.target.value)}
           >
             <option value="claude">Claude (Anthropic)</option>
             <option value="openai">OpenAI</option>
@@ -147,7 +137,7 @@ export function AgentConfigModal({ nodeId, onClose }: AgentConfigModalProps) {
             className="form-textarea"
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder="You are a helpful assistant..."
+            placeholder="You are a helpful coding assistant..."
           />
         </div>
 

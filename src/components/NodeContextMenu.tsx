@@ -30,9 +30,10 @@ export function NodeContextMenu({
     };
   }, [handleClickOutside]);
 
+  // Adjust position to stay within viewport
   const adjustedPosition = { ...position };
-  if (position.x + 180 > window.innerWidth) {
-    adjustedPosition.x = window.innerWidth - 190;
+  if (position.x + 200 > window.innerWidth) {
+    adjustedPosition.x = window.innerWidth - 210;
   }
   if (position.y + 200 > window.innerHeight) {
     adjustedPosition.y = window.innerHeight - 210;

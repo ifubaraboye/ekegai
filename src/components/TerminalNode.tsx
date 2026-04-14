@@ -1,111 +1,130 @@
-import { useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
-import { usePty } from "../hooks/usePty";
-import {
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Terminal as TerminalIcon,
-} from "lucide-react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
 import { type TerminalNodeData } from "../store/workflowStore";
 
 type Props = NodeProps<TerminalNodeData>;
 
-const stateColors = {
-  idle: "border-terminal-border",
-  running: "border-amber-500",
-  done: "border-green-500",
-  error: "border-red-500",
-};
-
-const statePulsing = {
-  idle: "",
-  running: "node-pulse-amber",
-  done: "node-pulse-green",
-  error: "node-pulse-red",
-};
-
 export function TerminalNode({ id, data }: Props) {
-  const terminalRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  const { init, fit, terminal, fitAddon } = usePty({
-    ptyId: data.ptyId,
-    onReady: (term, fitAdd) => {
-      if (terminalRef.current) {
-        term.open(terminalRef.current);
-        setTimeout(() => {
-          fitAdd.fit();
-        }, 100);
+  useEffect(() => {
+    if (!containerRef.current || terminalRef.current) return;
+
+    const terminal = new Terminal({
+      cursorBlink: true,
+      fontSize: 12,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: "#0d0d0d",
+        foreground: "#cccccc",
+        cursor: "#cccccc",
+        selection: "rgba(255, 255, 255, 0.3)",
+        black: "#000000",
+        red: "#ff5555",
+        green: "#50fa7b",
+        yellow: "#f1fa8c",
+        blue: "#bd93f9",
+        magenta: "#ff79c6",
+        cyan: "#8be9fd",
+        white: "#bfbfbf",
+        brightBlack: "#4d4d4d",
+        brightRed: "#ff6e6e",
+        brightGreen: "#5af78e",
+        brightYellow: "#f4f75c",
+        brightBlue: "#cba1f7",
+        brightMagenta: "#ff92d0",
+        brightCyan: "#9aedfe",
+        brightWhite: "#e6e6e6",
+      },
+      allowTransparency: true,
+      convertEol: true,
+      scrollback: 0,
+    });
+
+    const fitAddon = new FitAddon();
+    terminal.loadAddon(fitAddon);
+
+    terminalRef.current = terminal;
+    fitAddonRef.current = fitAddon;
+
+    window.electronAPI?.ptyCreate(data.ptyId, 80, 24);
+
+    terminal.onData((inputData) => {
+      window.electronAPI?.ptyInput(data.ptyId, inputData);
+    });
+
+    terminal.onBinary((binaryData) => {
+      window.electronAPI?.ptyInput(data.ptyId, binaryData);
+    });
+
+    const unsub = window.electronAPI?.onPtyOutput(data.ptyId, (outputData) => {
+      terminal.write(outputData);
+    });
+
+    terminal.open(containerRef.current);
+    setTimeout(() => {
+      fitAddon.fit();
+      setIsReady(true);
+    }, 50);
+
+    return () => {
+      unsub?.();
+      window.electronAPI?.ptyKill(data.ptyId);
+      terminal.dispose();
+      terminalRef.current = null;
+      fitAddonRef.current = null;
+    };
+  }, [data.ptyId]);
+
+  const handleResize = useCallback(() => {
+    if (fitAddonRef.current) {
+      fitAddonRef.current.fit();
+      const dims = fitAddonRef.current.proposeDimensions();
+      if (dims) {
+        window.electronAPI?.ptyResize(data.ptyId, dims.cols, dims.rows);
       }
-    },
-  });
-
-  useEffect(() => {
-    if (terminalRef.current && terminal) {
-      terminal.open(terminalRef.current);
-      setTimeout(() => {
-        fit();
-      }, 100);
     }
-  }, [terminal, fit]);
+  }, [data.ptyId]);
 
   useEffect(() => {
-    if (!terminalRef.current) return;
+    if (!containerRef.current || !isReady) return;
 
     const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
-        fit();
+        handleResize();
       });
     });
-    observer.observe(terminalRef.current);
+    observer.observe(containerRef.current);
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [fit]);
-
-  const handleResize = useCallback(() => {
-    fit();
-  }, [fit]);
-
-  const stateIcon = useMemo(() => {
-    switch (data.agentState) {
-      case "running":
-        return <Loader2 className="animate-spin" size={14} />;
-      case "done":
-        return <CheckCircle size={14} className="text-green-500" />;
-      case "error":
-        return <XCircle size={14} className="text-red-500" />;
-      default:
-        return <TerminalIcon size={14} />;
-    }
-  }, [data.agentState]);
+    return () => observer.disconnect();
+  }, [isReady, handleResize]);
 
   return (
     <div
-      className={`bg-terminal-bg border-2 ${stateColors[data.agentState]} ${statePulsing[data.agentState]} rounded-lg overflow-hidden`}
-      style={{ minWidth: 300, minHeight: 200 }}
+      style={{
+        background: "#0d0d0d",
+        overflow: "hidden",
+        border: "1px solid #333",
+        borderRadius: 0,
+        minWidth: 280,
+        minHeight: 180,
+      }}
     >
-      <NodeResizer onResize={handleResize} minWidth={300} minHeight={200} />
-
-      <div className="bg-terminal-bg border-b border-terminal-border px-3 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <TerminalIcon size={14} className="text-gray-400" />
-          <span className="text-terminal-text text-sm font-medium">
-            {data.label}
-          </span>
-        </div>
-        <div className="text-gray-400">{stateIcon}</div>
-      </div>
-
-      <Handle type="target" position={Position.Left} className="!bg-blue-400" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        style={{ background: "#666" }}
+      />
 
       <div
-        ref={terminalRef}
-        className="terminal-container"
+        ref={containerRef}
         style={{
           height: 180,
-          background: "#1a1a1a",
           padding: 4,
         }}
       />
@@ -113,7 +132,16 @@ export function TerminalNode({ id, data }: Props) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!bg-blue-400"
+        style={{ background: "#666" }}
+      />
+
+      <NodeResizer
+        onResize={handleResize}
+        minWidth={280}
+        minHeight={180}
+        style={{
+          borderColor: "#4a9eff",
+        }}
       />
     </div>
   );

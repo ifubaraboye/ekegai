@@ -63,6 +63,14 @@ export function usePty({
       terminal.write(data);
     });
 
+    terminal.onData((data) => {
+      window.electronAPI?.ptyInput(ptyId, data);
+    });
+
+    terminal.onBinary((data) => {
+      window.electronAPI?.ptyInput(ptyId, data);
+    });
+
     cleanupRef.current = () => {
       unsub?.();
       window.electronAPI?.ptyKill(ptyId);
