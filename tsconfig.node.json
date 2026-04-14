@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true
+  },
+  "include": [
+    "electron-vite.config.ts",
+    "electron/**/*",
+    "src/main.tsx",
+    "src/preload/*.d.ts"
+  ]
+}
