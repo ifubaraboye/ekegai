@@ -1,26 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
+import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { type TerminalNodeData } from "../store/workflowStore";
 
-type Props = NodeProps<TerminalNodeData>;
+interface Props {
+  id: string;
+  data: TerminalNodeData;
+}
 
 export function TerminalNode({ id, data }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || terminalRef.current) return;
 
     const terminal = new Terminal({
       cursorBlink: true,
-      fontSize: 12,
+      fontSize: 15,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       theme: {
-        background: "#0d0d0d",
+        background: "#111111",
         foreground: "#cccccc",
         cursor: "#cccccc",
         selection: "rgba(255, 255, 255, 0.3)",
@@ -43,7 +44,7 @@ export function TerminalNode({ id, data }: Props) {
       },
       allowTransparency: true,
       convertEol: true,
-      scrollback: 0,
+      scrollback: 10000,
     });
 
     const fitAddon = new FitAddon();
@@ -67,10 +68,10 @@ export function TerminalNode({ id, data }: Props) {
     });
 
     terminal.open(containerRef.current);
+
     setTimeout(() => {
       fitAddon.fit();
-      setIsReady(true);
-    }, 50);
+    }, 100);
 
     return () => {
       unsub?.();
@@ -81,68 +82,28 @@ export function TerminalNode({ id, data }: Props) {
     };
   }, [data.ptyId]);
 
-  const handleResize = useCallback(() => {
-    if (fitAddonRef.current) {
-      fitAddonRef.current.fit();
-      const dims = fitAddonRef.current.proposeDimensions();
-      if (dims) {
-        window.electronAPI?.ptyResize(data.ptyId, dims.cols, dims.rows);
-      }
-    }
-  }, [data.ptyId]);
-
   useEffect(() => {
-    if (!containerRef.current || !isReady) return;
+    if (!containerRef.current) return;
 
     const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
-        handleResize();
+        if (fitAddonRef.current) {
+          fitAddonRef.current.fit();
+          const dims = fitAddonRef.current.proposeDimensions();
+          if (dims) {
+            window.electronAPI?.ptyResize(data.ptyId, dims.cols, dims.rows);
+          }
+        }
       });
     });
     observer.observe(containerRef.current);
 
     return () => observer.disconnect();
-  }, [isReady, handleResize]);
+  }, [data.ptyId]);
 
   return (
-    <div
-      style={{
-        background: "#0d0d0d",
-        overflow: "hidden",
-        border: "1px solid #333",
-        borderRadius: 0,
-        minWidth: 280,
-        minHeight: 180,
-      }}
-    >
-      <Handle
-        type="target"
-        position={Position.Left}
-        style={{ background: "#666" }}
-      />
-
-      <div
-        ref={containerRef}
-        style={{
-          height: 180,
-          padding: 4,
-        }}
-      />
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{ background: "#666" }}
-      />
-
-      <NodeResizer
-        onResize={handleResize}
-        minWidth={280}
-        minHeight={180}
-        style={{
-          borderColor: "#4a9eff",
-        }}
-      />
+    <div className="terminal-tile">
+      <div className="terminal-content" ref={containerRef} />
     </div>
   );
 }

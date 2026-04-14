@@ -52,6 +52,34 @@
   box-sizing: border-box;
 }
 
+/* ReactFlow canvas visibility */
+.react-flow__renderer {
+  min-height: 100vh;
+  background: var(--color-cream) !important;
+}
+
+.react-flow__pane {
+  background: var(--color-cream) !important;
+}
+
+.react-flow__background {
+  background: var(--color-cream) !important;
+}
+
+/* Dark mode */
+.dark html,
+.dark body,
+.dark #root {
+  background: #0d0d0d;
+  color: #cccccc;
+}
+
+.dark .react-flow__renderer,
+.dark .react-flow__pane,
+.dark .react-flow__background {
+  background: #0d0d0d !important;
+}
+
 html,
 body,
 #root {
@@ -60,8 +88,8 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--color-cream);
-  color: var(--color-dark);
+  background: #0d0d0d;
+  color: #cccccc;
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -166,8 +194,8 @@ body,
   top: 0;
   bottom: 0;
   width: 64px;
-  background: var(--surface-200);
-  border-right: 1px solid var(--border-primary);
+  background: #0d0d0d;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -184,14 +212,14 @@ body,
   justify-content: center;
   border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--border-strong);
+  color: #555;
   background: transparent;
   transition: all 0.15s ease;
 }
 
 .sidebar-item:hover {
-  background: var(--surface-300);
-  color: var(--color-dark);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ccc;
 }
 
 .sidebar-item:active {
@@ -217,6 +245,14 @@ body,
   margin-left: 64px;
   width: calc(100% - 64px);
   height: 100%;
+}
+
+/* App Container */
+.app-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Context Menu */
@@ -494,4 +530,202 @@ body,
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+/* Niri-style Tiled Terminals */
+.terminal-tile {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tile-slot:focus-within .terminal-tile {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #161616;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 36px;
+}
+
+.terminal-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #999;
+}
+
+.terminal-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #888;
+}
+
+.terminal-status.running {
+  background: rgba(245, 78, 0, 0.2);
+  color: #f54e00;
+}
+
+.terminal-status.done {
+  background: rgba(31, 138, 101, 0.2);
+  color: #1f8a65;
+}
+
+.terminal-status.error {
+  background: rgba(207, 45, 86, 0.2);
+  color: #cf2d56;
+}
+
+.terminal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.terminal-close:hover {
+  background: #333;
+  color: #ff5555;
+}
+
+.terminal-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.tile-handle {
+  width: 12px !important;
+  height: 12px !important;
+  background: #666 !important;
+  border: 2px solid #0d0d0d !important;
+}
+
+/* Tile Container */
+.tile-container {
+  position: fixed;
+  top: 0;
+  left: 64px;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d0d;
+}
+
+.tiles-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  padding: 16px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.tiles-horizontal {
+  flex-direction: row;
+  overflow-x: auto;
+}
+
+.tiles-horizontal .tile-slot {
+  min-width: 600px;
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.dark .tile-container {
+  background: #0d0d0d;
+}
+
+.tile-controls {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f2f1ed;
+  border-bottom: 1px solid #ddd;
+}
+
+.dark .tile-controls {
+  background: #1a1a1a;
+  border-color: #333;
+}
+
+.tile-btn {
+  width: 32px;
+  height: 28px;
+  background: #333;
+  border: none;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.tile-btn:hover {
+  background: #444;
+  color: #888;
+}
+
+.tile-btn.active {
+  background: #f54e00;
+  color: #fff;
+}
+
+.tiles-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  padding: 16px;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.tiles-vertical {
+  flex-direction: column;
+}
+
+.tiles-vertical .tile-slot {
+  flex: 1;
+  min-height: 0;
+}
+
+.empty-tiles {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 16px;
+}
+
+.dark .empty-tiles {
+  color: #666;
 }

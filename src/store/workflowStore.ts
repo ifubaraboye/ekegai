@@ -16,6 +16,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export type AgentProvider = "claude" | "openai" | "ollama";
 
+export type TileLayout = "horizontal" | "vertical" | "grid";
+
 export interface AgentConfig {
   provider: AgentProvider;
   model: string;
@@ -43,6 +45,7 @@ interface WorkflowState {
   contextMenuPosition: { x: number; y: number } | null;
   isAgentConfigModalOpen: boolean;
   configModalNodeId: string | null;
+  tileLayout: TileLayout;
   onNodesChange: OnNodesChange<TerminalNode>;
   onEdgesChange: OnEdgesChange<WorkflowEdge>;
   onConnect: OnConnect;
@@ -55,24 +58,29 @@ interface WorkflowState {
   closeAgentConfig: () => void;
   runAgent: (nodeId: string, inputData?: string) => Promise<void>;
   getDownstreamNodes: (nodeId: string) => TerminalNode[];
+  setTileLayout: (layout: TileLayout) => void;
   serialize: () => string;
   load: (json: string) => void;
 }
 
-function createInitialNode(position: { x: number; y: number }): TerminalNode {
+function createInitialNode(
+  position: { x: number; y: number },
+  index: number,
+  total: number,
+): TerminalNode {
   const ptyId = uuidv4();
   return {
     id: uuidv4(),
     type: "terminal",
-    position,
+    position: { x: 0, y: 0 },
     data: {
       ptyId,
-      label: "Terminal",
+      label: "Terminal " + (index + 1),
       agentState: "idle",
     },
     style: {
-      width: 400,
-      minWidth: 300,
+      width: "100%",
+      height: "100%",
     },
   };
 }
@@ -84,6 +92,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   contextMenuPosition: null,
   isAgentConfigModalOpen: false,
   configModalNodeId: null,
+  tileLayout: "grid",
 
   onNodesChange: (changes: NodeChange<TerminalNode>[]) => {
     set({
@@ -107,7 +116,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   addNode: (position) => {
-    const newNode = createInitialNode(position);
+    const state = get();
+    const newNode = createInitialNode(
+      position,
+      state.nodes.length,
+      state.nodes.length + 1,
+    );
     set((state) => ({
       nodes: [...state.nodes, newNode],
     }));
@@ -187,6 +201,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     return state.nodes.filter((n) =>
       downstreamEdgeIds.includes(n.id),
     ) as TerminalNode[];
+  },
+
+  setTileLayout: (layout) => {
+    set({ tileLayout: layout });
   },
 
   serialize: () => {
