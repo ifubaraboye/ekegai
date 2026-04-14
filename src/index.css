@@ -542,6 +542,7 @@ body,
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .tile-slot:focus-within .terminal-tile {
@@ -549,6 +550,30 @@ body,
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.06),
     0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.terminal-close-floating {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*background: rgba(0, 0, 0, 0.7);*/
+  border: none;
+  color: #aaa;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  z-index: 10;
+}
+
+.terminal-close-floating:hover {
+  background: #ff5555;
+  color: #fff;
 }
 
 .terminal-header {
@@ -655,7 +680,7 @@ body,
 }
 
 .tiles-horizontal .tile-slot {
-  min-width: 600px;
+  min-width: 700px;
   flex: 0 0 auto;
   display: flex;
 }

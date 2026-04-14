@@ -1,7 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
-import { type TerminalNodeData } from "../store/workflowStore";
+import {
+  type TerminalNodeData,
+  useWorkflowStore,
+} from "../store/workflowStore";
 
 interface Props {
   id: string;
@@ -9,7 +12,9 @@ interface Props {
 }
 
 export function TerminalNode({ id, data }: Props) {
+  const deleteNode = useWorkflowStore((s) => s.deleteNode);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
@@ -102,8 +107,21 @@ export function TerminalNode({ id, data }: Props) {
   }, [data.ptyId]);
 
   return (
-    <div className="terminal-tile">
+    <div
+      className="terminal-tile"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="terminal-content" ref={containerRef} />
+      {isHovered && (
+        <button
+          className="terminal-close-floating"
+          onClick={() => deleteNode(id)}
+          title="Close terminal"
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }
