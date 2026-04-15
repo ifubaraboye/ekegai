@@ -33,6 +33,11 @@ export interface Project {
   name: string;
 }
 
+export interface IDE {
+  name: string;
+  command: string;
+}
+
 export interface TerminalNodeData {
   ptyId: string;
   label: string;
@@ -59,7 +64,13 @@ interface WorkflowState {
   activeProjectId: string | null;
   files: { name: string; isDirectory: boolean; path: string }[];
   activeTerminalId: string | null;
-  activeTerminalId: string | null;
+  availableIDEs: IDE[];
+  customIDEs: IDE[];
+  sidebarCollapsed: boolean;
+  setAvailableIDEs: (ides: IDE[]) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  addCustomIDE: (ide: IDE) => void;
+  removeCustomIDE: (name: string) => void;
   onNodesChange: OnNodesChange<TerminalNode>;
   onEdgesChange: OnEdgesChange<WorkflowEdge>;
   onConnect: OnConnect;
@@ -125,6 +136,21 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   activeProjectId: null,
   files: [],
   activeTerminalId: null,
+  availableIDEs: [],
+  customIDEs: [],
+  sidebarCollapsed: false,
+
+  setAvailableIDEs: (ides) => set({ availableIDEs: ides }),
+  setSidebarCollapsed: (collapsed: boolean) =>
+    set({ sidebarCollapsed: collapsed }),
+  addCustomIDE: (ide) =>
+    set((state) => ({
+      customIDEs: [...state.customIDEs, ide],
+    })),
+  removeCustomIDE: (name) =>
+    set((state) => ({
+      customIDEs: state.customIDEs.filter((i) => i.name !== name),
+    })),
 
   onNodesChange: (changes: NodeChange<TerminalNode>[]) => {
     set({

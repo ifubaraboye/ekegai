@@ -18,6 +18,11 @@ export interface ElectronAPI {
   readDir: (
     path: string,
   ) => Promise<{ name: string; isDirectory: boolean; path: string }[]>;
+  ideDetect: () => Promise<{ name: string; command: string }[]>;
+  ideOpen: (
+    path: string,
+    command: string,
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 const api: ElectronAPI = {
@@ -56,6 +61,14 @@ const api: ElectronAPI = {
   },
   readDir: async (path: string) => {
     const result = await ipcRenderer.invoke("fs:readDir", { path });
+    return result;
+  },
+  ideDetect: async () => {
+    const result = await ipcRenderer.invoke("ide:detect");
+    return result;
+  },
+  ideOpen: async (path: string, command: string) => {
+    const result = await ipcRenderer.invoke("ide:open", { path, command });
     return result;
   },
 };

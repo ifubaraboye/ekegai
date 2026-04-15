@@ -21,11 +21,16 @@ export default function App() {
     closeAgentConfig,
     activeTerminalId,
     setActiveTerminalId,
+    setAvailableIDEs,
+    sidebarCollapsed,
   } = useWorkflowStore();
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
-  }, []);
+    window.electronAPI?.ideDetect().then((ides) => {
+      setAvailableIDEs(ides);
+    });
+  }, [setAvailableIDEs]);
 
   const handleContextMenuAction = useCallback(
     (action: string) => {
@@ -84,12 +89,19 @@ export default function App() {
     if (!activeTerminalId || !activeTerminalInProject) {
       setActiveTerminalId(activeProjectNodes[0].id);
     }
-  }, [activeProjectId, activeProjectNodes, activeTerminalId, setActiveTerminalId]);
+  }, [
+    activeProjectId,
+    activeProjectNodes,
+    activeTerminalId,
+    setActiveTerminalId,
+  ]);
 
   return (
     <div className="app-container">
       <Sidebar />
-      <div className="tile-container-wrapper">
+      <div
+        className={`tile-container-wrapper ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
+      >
         <TileContainer
           activeTerminalId={activeTerminalId}
           nodes={nodes}

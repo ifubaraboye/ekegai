@@ -1,6 +1,16 @@
 import { useState, useCallback } from "react";
 import { useWorkflowStore } from "../store/workflowStore";
-import { Plus, X, ChevronDown, ChevronRight, FolderOpen } from "lucide-react";
+import {
+  Plus,
+  X,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
+  Code2,
+  PanelLeft,
+  PanelLeftClose,
+} from "lucide-react";
+import { IDEContextMenu } from "./IDEContextMenu";
 
 const PROJECT_ACCENTS = [
   "#bd93f9",
@@ -31,11 +41,18 @@ export function Sidebar() {
     setActiveTerminalId,
     deleteNode,
     addNode,
+    sidebarCollapsed,
+    setSidebarCollapsed,
   } = useWorkflowStore();
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set(),
   );
+  const [ideMenuPosition, setIdeMenuPosition] = useState<{
+    x: number;
+    y: number;
+    projectPath: string;
+  } | null>(null);
 
   const toggleExpanded = useCallback((id: string) => {
     setExpandedProjects((prev) => {
@@ -48,10 +65,16 @@ export function Sidebar() {
   const handleOpenProject = useCallback(async () => {
     const result = await window.electronAPI?.openFolder();
     if (result && !result.canceled && result.path) {
-      const id = addProject(result.path);
-      setExpandedProjects((prev) => new Set(prev).add(id as string));
+      addProject(result.path);
+      const projectName = result.path.split(/[/\\]/).pop() || "Untitled";
+      const projectId = [
+        ...projects,
+        { id: "", path: result.path, name: projectName },
+      ].find((p) => p.path === result.path)?.id;
+      const newId = projects.length > 0 ? projects[projects.length - 1].id : "";
+      setExpandedProjects((prev) => new Set(prev).add(newId || ""));
     }
-  }, [addProject]);
+  }, [addProject, projects]);
 
   const handleAddTerminal = useCallback(
     (e: React.MouseEvent, projectId: string) => {
@@ -103,139 +126,190 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="ekegai-sidebar">
+    <aside
+      className={`ekegai-sidebar ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
+    >
       <div className="sidebar-wordmark">
-        <span className="wordmark-text">ekegai</span>
-        <button
-          className="sidebar-new-btn"
-          onClick={handleOpenProject}
-          title="Open project"
-        >
-          <Plus size={13} strokeWidth={2} />
-        </button>
-      </div>
-
-      <div className="sidebar-scroll">
-        {projects.length === 0 ? (
-          <button className="sidebar-empty-cta" onClick={handleOpenProject}>
-            <FolderOpen size={15} />
-            <span>Open a project</span>
+        {!sidebarCollapsed && <span className="wordmark-text">ekegai</span>}
+        <div className="sidebar-header-actions">
+          <button
+            className="sidebar-new-btn"
+            onClick={handleOpenProject}
+            title="Open project"
+          >
+            <Plus size={13} strokeWidth={2} />
           </button>
-        ) : (
-          projects.map((project) => {
-            const projectNodes = getNodesByProject(project.id);
-            const isExpanded = expandedProjects.has(project.id);
-            const isActive = activeProjectId === project.id;
-            const accent = projectAccent(project.id);
-            const initial = project.name.charAt(0).toUpperCase();
-
-            return (
-              <div key={project.id} className="project-group">
-                <div
-                  className={`project-row ${isActive ? "project-row--active" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    setActiveProject(project.id);
-                    toggleExpanded(project.id);
-                  }}
-                  onKeyDown={(e) => handleProjectRowKeyDown(e, project.id)}
-                >
-                  <span className="chevron">
-                    {isExpanded ? (
-                      <ChevronDown size={11} strokeWidth={2.5} />
-                    ) : (
-                      <ChevronRight size={11} strokeWidth={2.5} />
-                    )}
-                  </span>
-
-                  <span
-                    className="project-avatar"
-                    style={{
-                      background: accent + "22",
-                      color: accent,
-                      borderColor: accent + "44",
-                    }}
-                  >
-                    {initial}
-                  </span>
-
-                  <span className="project-name">{project.name}</span>
-
-                  <button
-                    type="button"
-                    className="row-action"
-                    onClick={(e) => handleAddTerminal(e, project.id)}
-                    title="New terminal"
-                  >
-                    <Plus size={11} strokeWidth={2.5} />
-                  </button>
-                  <button
-                    type="button"
-                    className="row-action"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeProject(project.id);
-                    }}
-                    title="Close project"
-                  >
-                    <X size={11} strokeWidth={2.5} />
-                  </button>
-                </div>
-
-                {isExpanded && (
-                  <div className="terminal-group">
-                    {projectNodes.length === 0 ? (
-                      <button
-                        type="button"
-                        className="terminal-empty"
-                        onClick={(e) => handleAddTerminal(e, project.id)}
-                      >
-                        <Plus size={11} /> <span>New terminal</span>
-                      </button>
-                    ) : (
-                      projectNodes.map((node) => {
-                        const isActiveNode = activeTerminalId === node.id;
-                        const label = node.data.label || "terminal";
-
-                        return (
-                          <div
-                            key={node.id}
-                            className={`terminal-row ${isActiveNode ? "terminal-row--active" : ""}`}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() =>
-                              handleTerminalClick(node.id, project.id)
-                            }
-                            onKeyDown={(e) =>
-                              handleTerminalRowKeyDown(e, node.id, project.id)
-                            }
-                          >
-                            <span
-                              className={`status-dot ${isActiveNode ? "status-dot--live" : ""}`}
-                            />
-
-                            <span className="terminal-label">{label}</span>
-
-                            <button
-                              type="button"
-                              className="row-action terminal-kill"
-                              onClick={(e) => handleDeleteTerminal(e, node.id)}
-                              title="Kill terminal"
-                            >
-                              <X size={11} strokeWidth={2.5} />
-                            </button>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+          <button
+            className="sidebar-collapse-btn"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft size={13} strokeWidth={2} />
+            ) : (
+              <PanelLeftClose size={13} strokeWidth={2} />
+            )}
+          </button>
+        </div>
       </div>
+
+      {!sidebarCollapsed && (
+        <div className="sidebar-scroll">
+          {projects.length === 0 ? (
+            <button className="sidebar-empty-cta" onClick={handleOpenProject}>
+              <FolderOpen size={15} />
+              <span>Open a project</span>
+            </button>
+          ) : (
+            projects.map((project) => {
+              const projectNodes = getNodesByProject(project.id);
+              const isExpanded = expandedProjects.has(project.id);
+              const isActive = activeProjectId === project.id;
+              const accent = projectAccent(project.id);
+              const initial = project.name.charAt(0).toUpperCase();
+
+              return (
+                <div key={project.id} className="project-group">
+                  <div
+                    className={`project-row ${isActive ? "project-row--active" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      setActiveProject(project.id);
+                      toggleExpanded(project.id);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setIdeMenuPosition({
+                        x: e.clientX,
+                        y: e.clientY,
+                        projectPath: project.path,
+                      });
+                    }}
+                    onKeyDown={(e) => handleProjectRowKeyDown(e, project.id)}
+                  >
+                    <span className="chevron">
+                      {isExpanded ? (
+                        <ChevronDown size={11} strokeWidth={2.5} />
+                      ) : (
+                        <ChevronRight size={11} strokeWidth={2.5} />
+                      )}
+                    </span>
+
+                    <span
+                      className="project-avatar"
+                      style={{
+                        background: accent + "22",
+                        color: accent,
+                        borderColor: accent + "44",
+                      }}
+                    >
+                      {initial}
+                    </span>
+
+                    <span className="project-name">{project.name}</span>
+
+                    <button
+                      type="button"
+                      className="row-action"
+                      onClick={(e) => handleAddTerminal(e, project.id)}
+                      title="New terminal"
+                    >
+                      <Plus size={11} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      type="button"
+                      className="row-action"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIdeMenuPosition({
+                          x: e.clientX,
+                          y: e.clientY,
+                          projectPath: project.path,
+                        });
+                      }}
+                      title="Open in IDE"
+                    >
+                      <Code2 size={11} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      type="button"
+                      className="row-action"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeProject(project.id);
+                      }}
+                      title="Close project"
+                    >
+                      <X size={11} strokeWidth={2.5} />
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="terminal-group">
+                      {projectNodes.length === 0 ? (
+                        <button
+                          type="button"
+                          className="terminal-empty"
+                          onClick={(e) => handleAddTerminal(e, project.id)}
+                        >
+                          <Plus size={11} /> <span>New terminal</span>
+                        </button>
+                      ) : (
+                        projectNodes.map((node) => {
+                          const isActiveNode = activeTerminalId === node.id;
+                          const label = node.data.label || "terminal";
+
+                          return (
+                            <div
+                              key={node.id}
+                              className={`terminal-row ${isActiveNode ? "terminal-row--active" : ""}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() =>
+                                handleTerminalClick(node.id, project.id)
+                              }
+                              onKeyDown={(e) =>
+                                handleTerminalRowKeyDown(e, node.id, project.id)
+                              }
+                            >
+                              <span
+                                className={`status-dot ${isActiveNode ? "status-dot--live" : ""}`}
+                              />
+
+                              <span className="terminal-label">{label}</span>
+
+                              <button
+                                type="button"
+                                className="row-action terminal-kill"
+                                onClick={(e) =>
+                                  handleDeleteTerminal(e, node.id)
+                                }
+                                title="Kill terminal"
+                              >
+                                <X size={11} strokeWidth={2.5} />
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {ideMenuPosition && (
+        <IDEContextMenu
+          projectPath={ideMenuPosition.projectPath}
+          x={ideMenuPosition.x}
+          y={ideMenuPosition.y}
+          onClose={() => setIdeMenuPosition(null)}
+        />
+      )}
     </aside>
   );
 }

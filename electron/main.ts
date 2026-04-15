@@ -187,6 +187,44 @@ ipcMain.handle("fs:readDir", async (_event, { path }) => {
   }
 });
 
+ipcMain.handle("ide:detect", async () => {
+  const { exec } = require("child_process");
+  const available: { name: string; command: string }[] = [];
+
+  const ideCommands = [
+    { name: "VS Code", command: "code" },
+    { name: "Zed", command: "zed" },
+    { name: "Cursor", command: "cursor" },
+  ];
+
+  for (const ide of ideCommands) {
+    try {
+      const isAvailable = await new Promise<boolean>((resolve) => {
+        exec(`which ${ide.command}`, (err) => resolve(!err));
+      });
+      if (isAvailable) available.push(ide);
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  return available;
+});
+
+ipcMain.handle("ide:open", async (_event, { path, command }) => {
+  const { spawn } = require("child_process");
+  try {
+    spawn(command, [path], {
+      detached: true,
+      stdio: "ignore",
+    }).unref();
+    return { success: true };
+  } catch (error) {
+    log.error(`Error opening IDE: ${error}`);
+    return { success: false, error: String(error) };
+  }
+});
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1400,
