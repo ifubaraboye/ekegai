@@ -9,14 +9,17 @@ import {
 interface Props {
   id: string;
   data: TerminalNodeData;
+  isActive?: boolean;
 }
 
-export function TerminalNode({ id, data }: Props) {
+export function TerminalNode({ id, data, isActive }: Props) {
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
+  const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const oscBufferRef = useRef("");
 
   useEffect(() => {
     if (!containerRef.current || terminalRef.current) return;
@@ -25,6 +28,7 @@ export function TerminalNode({ id, data }: Props) {
       cursorBlink: true,
       fontSize: 15,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      allowProposedApi: true,
       theme: {
         background: "#111111",
         foreground: "#cccccc",
@@ -58,7 +62,7 @@ export function TerminalNode({ id, data }: Props) {
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    window.electronAPI?.ptyCreate(data.ptyId, 80, 24);
+    window.electronAPI?.ptyCreate(data.ptyId, 80, 24, data.cwd);
 
     terminal.onData((inputData) => {
       window.electronAPI?.ptyInput(data.ptyId, inputData);
@@ -68,8 +72,27 @@ export function TerminalNode({ id, data }: Props) {
       window.electronAPI?.ptyInput(data.ptyId, binaryData);
     });
 
+    const parseOscTitle = (chunk: string): string | null => {
+      const combined = oscBufferRef.current + chunk;
+      const match = combined.match(
+        /\x1b\](0|2);([^\x07\x1b]*?)(?:\x07|\x1b\\)/,
+      );
+      if (match) {
+        oscBufferRef.current = "";
+        const title = match[2].trim();
+        return title.length > 0 && title.length < 80 ? title : null;
+      }
+      const partial = combined.match(/\x1b\](0|2);[^\x07\x1b]*$/);
+      oscBufferRef.current = partial ? partial[0].slice(-128) : "";
+      return null;
+    };
+
     const unsub = window.electronAPI?.onPtyOutput(data.ptyId, (outputData) => {
       terminal.write(outputData);
+      const title = parseOscTitle(outputData);
+      if (title) {
+        updateNodeData(id, { label: title });
+      }
     });
 
     terminal.open(containerRef.current);
@@ -80,12 +103,30 @@ export function TerminalNode({ id, data }: Props) {
 
     return () => {
       unsub?.();
-      window.electronAPI?.ptyKill(data.ptyId);
       terminal.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [data.ptyId]);
+  }, [data.ptyId, data.cwd, id, updateNodeData]);
+
+  useEffect(() => {
+    if (
+      isActive &&
+      terminalRef.current &&
+      containerRef.current &&
+      fitAddonRef.current
+    ) {
+      terminalRef.current.focus();
+      setTimeout(() => {
+        fitAddonRef.current?.fit();
+        const dims = fitAddonRef.current?.proposeDimensions();
+        if (dims && dims.cols > 0 && dims.rows > 0) {
+          window.electronAPI?.ptyResize(data.ptyId, dims.cols, dims.rows);
+        }
+        terminalRef.current?.refresh(0, terminalRef.current.rows - 1);
+      }, 100);
+    }
+  }, [isActive, data.ptyId]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -95,7 +136,7 @@ export function TerminalNode({ id, data }: Props) {
         if (fitAddonRef.current) {
           fitAddonRef.current.fit();
           const dims = fitAddonRef.current.proposeDimensions();
-          if (dims) {
+          if (dims && dims.cols > 0 && dims.rows > 0) {
             window.electronAPI?.ptyResize(data.ptyId, dims.cols, dims.rows);
           }
         }

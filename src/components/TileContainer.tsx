@@ -1,50 +1,83 @@
-import { useWorkflowStore } from "../store/workflowStore";
-import { TerminalNode } from "./TerminalNode";
 import { useEffect, useRef } from "react";
+import { useWorkflowStore, type TerminalNode as TerminalNodeType } from "../store/workflowStore";
+import { TerminalNode } from "./TerminalNode";
 
-export function TileContainer() {
-  const { nodes } = useWorkflowStore();
+interface TileContainerProps {
+  activeTerminalId: string | null;
+  activeProjectId: string | null;
+  nodes: TerminalNodeType[];
+}
+
+export function TileContainer({
+  activeTerminalId,
+  activeProjectId,
+  nodes,
+}: TileContainerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const projects = useWorkflowStore((state) => state.projects);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!wrapperRef.current || nodes.length === 0) return;
+    if (!wrapperRef.current || !activeProjectId) return;
 
-      const isNext = e.key === "ArrowRight" && (e.ctrlKey || e.metaKey);
-      const isPrev = e.key === "ArrowLeft" && (e.ctrlKey || e.metaKey);
+    const activeRow = wrapperRef.current.querySelector<HTMLElement>(
+      `[data-project-row="${activeProjectId}"]`,
+    );
+    activeRow?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [activeProjectId]);
 
-      if (isNext || isPrev) {
-        e.preventDefault();
-        const wrapper = wrapperRef.current;
-        const wrapperWidth = wrapper.clientWidth;
-        const scrollLeft = wrapper.scrollLeft;
+  useEffect(() => {
+    if (!wrapperRef.current || !activeTerminalId) return;
 
-        const currentPaneIndex = Math.round(scrollLeft / 520);
-        const targetPaneIndex = isNext
-          ? Math.min(currentPaneIndex + 1, nodes.length - 1)
-          : Math.max(currentPaneIndex - 1, 0);
+    const activeTerminal = wrapperRef.current.querySelector<HTMLElement>(
+      `[data-terminal-id="${activeTerminalId}"]`,
+    );
+    activeTerminal?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeTerminalId]);
 
-        wrapper.scrollTo({
-          left: targetPaneIndex * 520,
-          behavior: "smooth",
-        });
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [nodes.length]);
+  const terminalRows = projects
+    .map((project) => ({
+      project,
+      nodes: nodes.filter((node) => node.data.projectId === project.id),
+    }))
+    .filter(({ nodes: projectNodes }) => projectNodes.length > 0);
 
   return (
     <div className="tile-container">
-      <div className="tiles-wrapper tiles-horizontal" ref={wrapperRef}>
-        {nodes.map((node) => (
-          <div key={node.id} className="tile-slot">
-            <TerminalNode id={node.id} data={node.data} />
-          </div>
+      <div className="tiles-wrapper tiles-projects" ref={wrapperRef}>
+        {terminalRows.map(({ project, nodes: projectNodes }) => (
+          <section
+            key={project.id}
+            className={`project-terminal-row ${activeProjectId === project.id ? "project-terminal-row--active" : ""}`}
+            data-project-row={project.id}
+          >
+            <div className="project-terminal-track">
+              {projectNodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="tile-slot"
+                  data-terminal-id={node.id}
+                >
+                  <TerminalNode
+                    id={node.id}
+                    data={node.data}
+                    isActive={activeTerminalId === node.id}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
         ))}
-        {nodes.length === 0 && (
-          <div className="empty-tiles">Press + to add a terminal</div>
+        {terminalRows.length === 0 && (
+          <div className="empty-tiles">
+            Select a project and press + to add a terminal
+          </div>
         )}
       </div>
     </div>

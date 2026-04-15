@@ -27,9 +27,18 @@ export interface AgentConfig {
 
 export type AgentState = "idle" | "running" | "done" | "error";
 
+export interface Project {
+  id: string;
+  path: string;
+  name: string;
+}
+
 export interface TerminalNodeData {
   ptyId: string;
   label: string;
+  cwd?: string;
+  projectId?: string;
+  createdAt?: number;
   agentConfig?: AgentConfig;
   agentState: AgentState;
   lastOutput?: string;
@@ -46,10 +55,15 @@ interface WorkflowState {
   isAgentConfigModalOpen: boolean;
   configModalNodeId: string | null;
   tileLayout: TileLayout;
+  projects: Project[];
+  activeProjectId: string | null;
+  files: { name: string; isDirectory: boolean; path: string }[];
+  activeTerminalId: string | null;
+  activeTerminalId: string | null;
   onNodesChange: OnNodesChange<TerminalNode>;
   onEdgesChange: OnEdgesChange<WorkflowEdge>;
   onConnect: OnConnect;
-  addNode: (position: { x: number; y: number }) => string;
+  addNode: (position: { x: number; y: number }, projectId?: string) => string;
   updateNodeData: (id: string, data: Partial<TerminalNodeData>) => void;
   deleteNode: (id: string) => void;
   setSelectedNode: (id: string | null) => void;
@@ -59,6 +73,15 @@ interface WorkflowState {
   runAgent: (nodeId: string, inputData?: string) => Promise<void>;
   getDownstreamNodes: (nodeId: string) => TerminalNode[];
   setTileLayout: (layout: TileLayout) => void;
+  addProject: (path: string) => void;
+  removeProject: (id: string) => void;
+  setActiveProject: (id: string | null) => void;
+  getProjectById: (id: string) => Project | undefined;
+  getNodesByProject: (projectId: string) => TerminalNode[];
+  setFiles: (
+    files: { name: string; isDirectory: boolean; path: string }[],
+  ) => void;
+  setActiveTerminalId: (id: string | null) => void;
   serialize: () => string;
   load: (json: string) => void;
 }
@@ -67,6 +90,8 @@ function createInitialNode(
   position: { x: number; y: number },
   index: number,
   total: number,
+  cwd?: string,
+  projectId?: string,
 ): TerminalNode {
   const ptyId = uuidv4();
   return {
@@ -76,6 +101,9 @@ function createInitialNode(
     data: {
       ptyId,
       label: "Terminal " + (index + 1),
+      cwd,
+      projectId,
+      createdAt: Date.now(),
       agentState: "idle",
     },
     style: {
@@ -93,6 +121,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   isAgentConfigModalOpen: false,
   configModalNodeId: null,
   tileLayout: "grid",
+  projects: [],
+  activeProjectId: null,
+  files: [],
+  activeTerminalId: null,
 
   onNodesChange: (changes: NodeChange<TerminalNode>[]) => {
     set({
@@ -115,12 +147,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     });
   },
 
-  addNode: (position) => {
+  addNode: (position, projectId) => {
     const state = get();
+    const project = projectId
+      ? state.projects.find((p) => p.id === projectId)
+      : state.activeProjectId
+        ? state.projects.find((p) => p.id === state.activeProjectId)
+        : null;
     const newNode = createInitialNode(
       position,
       state.nodes.length,
       state.nodes.length + 1,
+      project?.path,
+      projectId || state.activeProjectId || undefined,
     );
     set((state) => ({
       nodes: [...state.nodes, newNode],
@@ -144,6 +183,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+      activeTerminalId:
+        state.activeTerminalId === id ? null : state.activeTerminalId,
     }));
   },
 
@@ -207,6 +248,51 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ tileLayout: layout });
   },
 
+  addProject: (path) => {
+    const name = path.split(/[/\\]/).pop() || "Untitled";
+    const id = uuidv4();
+    set((state) => ({
+      projects: [...state.projects, { id, path, name }],
+      activeProjectId: id,
+    }));
+    return id;
+  },
+
+  removeProject: (id) => {
+    set((state) => {
+      const newProjects = state.projects.filter((p) => p.id !== id);
+      const newNodes = state.nodes.filter((n) => n.data.projectId !== id);
+      return {
+        projects: newProjects,
+        activeProjectId:
+          state.activeProjectId === id
+            ? newProjects[0]?.id || null
+            : state.activeProjectId,
+        nodes: newNodes,
+      };
+    });
+  },
+
+  setActiveProject: (id) => {
+    set({ activeProjectId: id });
+  },
+
+  getProjectById: (id) => {
+    return get().projects.find((p) => p.id === id);
+  },
+
+  getNodesByProject: (projectId) => {
+    return get().nodes.filter((n) => n.data.projectId === projectId);
+  },
+
+  setFiles: (files) => {
+    set({ files });
+  },
+
+  setActiveTerminalId: (id) => {
+    set({ activeTerminalId: id });
+  },
+
   serialize: () => {
     const state = get();
     const cleanNodes = state.nodes.map(({ data, ...node }) => ({
@@ -249,7 +335,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       set({ nodes: loadedNodes, edges: loadedEdges });
 
       for (const node of loadedNodes) {
-        window.electronAPI?.ptyCreate(node.data.ptyId, 80, 24);
+        window.electronAPI?.ptyCreate(node.data.ptyId, 80, 24, node.data.cwd);
       }
     } catch (error) {
       console.error("Failed to load workflow:", error);

@@ -2,84 +2,30 @@ import { useCallback, useState, useEffect } from "react";
 import { TileContainer } from "./components/TileContainer";
 import { NodeContextMenu } from "./components/NodeContextMenu";
 import { AgentConfigModal } from "./components/AgentConfigModal";
+import { Sidebar } from "./components/Sidebar";
 import { useWorkflowStore } from "./store/workflowStore";
-import { Plus, Menu, MenuSquare } from "lucide-react";
-
-function Sidebar({
-  collapsed,
-  onToggle,
-}: {
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  const onAddNode = useCallback(() => {
-    const store = useWorkflowStore.getState();
-    const ptyId = store.addNode({ x: 0, y: 0 });
-    if (ptyId && window.electronAPI) {
-      window.electronAPI.ptyCreate(ptyId, 80, 24);
-    }
-  }, []);
-
-  return (
-    <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
-      <button
-        className="sidebar-toggle"
-        onClick={onToggle}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {collapsed ? <MenuSquare size={20} /> : <Menu size={20} />}
-      </button>
-      <div className="sidebar-divider" />
-      <button className="sidebar-item" onClick={onAddNode} title="New terminal">
-        <Plus size={22} />
-        {!collapsed && <span className="sidebar-label">New</span>}
-      </button>
-    </div>
-  );
-}
 
 export default function App() {
-  const [isDark, setIsDark] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem("sidebarCollapsed");
-    return saved ? JSON.parse(saved) : false;
-  });
-
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("sidebarCollapsed", JSON.stringify(sidebarCollapsed));
-  }, [sidebarCollapsed]);
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => !prev);
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    setIsDark((prev) => {
-      const newValue = !prev;
-      if (newValue) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      return newValue;
-    });
-  }, []);
+  const [isDark] = useState(true);
 
   const {
+    nodes,
+    activeProjectId,
     setContextMenu,
     contextMenuPosition,
     selectedNodeId,
-    setSelectedNode,
     deleteNode,
     isAgentConfigModalOpen,
     configModalNodeId,
     openAgentConfig,
     closeAgentConfig,
+    activeTerminalId,
+    setActiveTerminalId,
   } = useWorkflowStore();
+
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+  }, []);
 
   const handleContextMenuAction = useCallback(
     (action: string) => {
@@ -119,15 +65,36 @@ export default function App() {
     [selectedNodeId, deleteNode, openAgentConfig, setContextMenu],
   );
 
+  const activeProjectNodes = activeProjectId
+    ? nodes.filter((n) => n.data.projectId === activeProjectId)
+    : nodes;
+
+  useEffect(() => {
+    if (activeProjectNodes.length === 0) {
+      if (activeProjectId && activeTerminalId !== null) {
+        setActiveTerminalId(null);
+      }
+      return;
+    }
+
+    const activeTerminalInProject = activeProjectNodes.some(
+      (node) => node.id === activeTerminalId,
+    );
+
+    if (!activeTerminalId || !activeTerminalInProject) {
+      setActiveTerminalId(activeProjectNodes[0].id);
+    }
+  }, [activeProjectId, activeProjectNodes, activeTerminalId, setActiveTerminalId]);
+
   return (
     <div className="app-container">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      <div
-        className={`tile-container-wrapper ${
-          sidebarCollapsed ? "sidebar-collapsed" : ""
-        }`}
-      >
-        <TileContainer />
+      <Sidebar />
+      <div className="tile-container-wrapper">
+        <TileContainer
+          activeTerminalId={activeTerminalId}
+          nodes={nodes}
+          activeProjectId={activeProjectId}
+        />
       </div>
 
       {contextMenuPosition && (

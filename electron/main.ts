@@ -18,16 +18,24 @@ function getShell(): string {
   return process.env.SHELL || "/bin/bash";
 }
 
-function createPty(ptyId: string, cols: number, rows: number): void {
+function createPty(
+  ptyId: string,
+  cols: number,
+  rows: number,
+  cwd?: string,
+): void {
   if (ptyMap.has(ptyId)) {
-    log.warn(`PTY ${ptyId} already exists, killing old one`);
-    const oldPty = ptyMap.get(ptyId);
-    oldPty?.kill();
-    ptyMap.delete(ptyId);
+    const existingPty = ptyMap.get(ptyId);
+    if (existingPty) {
+      existingPty.resize(cols, rows);
+      log.info(`Resized existing PTY ${ptyId}`);
+      return;
+    }
   }
 
   const shell = getShell();
-  const cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
+  const workingDir =
+    cwd || process.env.HOME || process.env.USERPROFILE || os.homedir();
 
   const env: Record<string, string> = {};
   for (const key of Object.keys(process.env)) {
@@ -43,7 +51,7 @@ function createPty(ptyId: string, cols: number, rows: number): void {
     name: "xterm-256color",
     cols,
     rows,
-    cwd: cwd,
+    cwd: workingDir,
     env: env,
   };
 
@@ -51,7 +59,7 @@ function createPty(ptyId: string, cols: number, rows: number): void {
     options.useConpty = true;
   }
 
-  log.info(`Spawning shell: ${shell} in ${cwd}`);
+  log.info(`Spawning shell: ${shell} in ${workingDir}`);
 
   const ptyProcess = pty.spawn(shell, [], options);
   ptyMap.set(ptyId, ptyProcess);
@@ -81,6 +89,10 @@ function writeToPty(ptyId: string, data: string): void {
 }
 
 function resizePty(ptyId: string, cols: number, rows: number): void {
+  if (cols <= 0 || rows <= 0) {
+    log.warn(`Invalid resize dimensions for ${ptyId}: ${cols}x${rows}`);
+    return;
+  }
   const ptyProcess = ptyMap.get(ptyId);
   if (ptyProcess) {
     ptyProcess.resize(cols, rows);
@@ -100,8 +112,8 @@ function killPty(ptyId: string): void {
   }
 }
 
-ipcMain.on("pty:create", (_event, { ptyId, cols, rows }) => {
-  createPty(ptyId, cols, rows);
+ipcMain.on("pty:create", (_event, { ptyId, cols, rows, cwd }) => {
+  createPty(ptyId, cols, rows, cwd);
 });
 
 ipcMain.on("pty:input", (_event, { ptyId, data }) => {
@@ -141,6 +153,38 @@ ipcMain.handle("workflow:load", async () => {
   const data = fs.readFileSync(result.filePaths[0], "utf-8");
   log.info(`Loaded workflow from ${result.filePaths[0]}`);
   return { canceled: false, filePath: result.filePaths[0], data };
+});
+
+ipcMain.handle("dialog:openFolder", async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ["openDirectory"],
+  });
+  if (result.canceled || !result.filePaths?.length) {
+    return { canceled: true };
+  }
+  log.info(`Opened folder: ${result.filePaths[0]}`);
+  return { canceled: false, path: result.filePaths[0] };
+});
+
+ipcMain.handle("fs:readDir", async (_event, { path }) => {
+  try {
+    const entries = fs.readdirSync(path, { withFileTypes: true });
+    const files = entries
+      .map((entry) => ({
+        name: entry.name,
+        isDirectory: entry.isDirectory(),
+        path: `${path}/${entry.name}`,
+      }))
+      .sort((a, b) => {
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    return files;
+  } catch (error) {
+    log.error(`Error reading directory ${path}:`, error);
+    return [];
+  }
 });
 
 function createWindow(): void {

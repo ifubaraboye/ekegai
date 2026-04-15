@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 export interface ElectronAPI {
-  ptyCreate: (ptyId: string, cols: number, rows: number) => void;
+  ptyCreate: (ptyId: string, cols: number, rows: number, cwd?: string) => void;
   ptyInput: (ptyId: string, data: string) => void;
   ptyResize: (ptyId: string, cols: number, rows: number) => void;
   ptyKill: (ptyId: string) => void;
@@ -14,11 +14,15 @@ export interface ElectronAPI {
     filePath?: string;
     data?: string;
   }>;
+  openFolder: () => Promise<{ canceled: boolean; path?: string }>;
+  readDir: (
+    path: string,
+  ) => Promise<{ name: string; isDirectory: boolean; path: string }[]>;
 }
 
 const api: ElectronAPI = {
-  ptyCreate: (ptyId: string, cols: number, rows: number) => {
-    ipcRenderer.send("pty:create", { ptyId, cols, rows });
+  ptyCreate: (ptyId: string, cols: number, rows: number, cwd?: string) => {
+    ipcRenderer.send("pty:create", { ptyId, cols, rows, cwd });
   },
   ptyInput: (ptyId: string, data: string) => {
     ipcRenderer.send("pty:input", { ptyId, data });
@@ -44,6 +48,14 @@ const api: ElectronAPI = {
   },
   loadWorkflow: async () => {
     const result = await ipcRenderer.invoke("workflow:load");
+    return result;
+  },
+  openFolder: async () => {
+    const result = await ipcRenderer.invoke("dialog:openFolder");
+    return result;
+  },
+  readDir: async (path: string) => {
+    const result = await ipcRenderer.invoke("fs:readDir", { path });
     return result;
   },
 };
