@@ -22,12 +22,15 @@ A modern desktop application that combines a node-based workflow canvas with rea
 - **State Management:** Zustand
 - **Styling:** TailwindCSS + custom CSS
 
+Note: ekegai only supports **Linux** and **macOS**. Windows is not supported.
+
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
 - npm or pnpm
+- Linux or macOS (Windows is NOT supported)
 
 ### Installation
 
@@ -59,8 +62,8 @@ npm run build:linux
 # Package for macOS
 npm run build:mac
 
-# Package for Windows
-npm run build:win
+# Package for Windows (NOT SUPPORTED)
+# Windows is not supported. Only Linux and macOS.
 ```
 
 The packaged app will be in the `release/` folder.
@@ -88,6 +91,10 @@ On restart, terminals are automatically restored with their working directories 
 
 - **Enter/Space** on project row — Expand/collapse project
 - **Enter/Space** on terminal row — Focus terminal
+
+## Limitations
+
+The terminal does **not** fully restore to its original state upon quitting. On quit, the terminal session ends and the shell exits. Scrollback history and running processes are not restored.
 
 ## Configuration
 
