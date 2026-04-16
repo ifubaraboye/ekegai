@@ -27,3 +27,8 @@ Thumbs.db
 
 # Debug
 *.tsbuildinfo
+
+# Design
+design.md
+.codex
+Ses.md
