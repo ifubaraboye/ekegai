@@ -485,17 +485,13 @@ body,
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #111111;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  /*background: #111111;*/
+  /*border: 1px solid rgba(255, 255, 255, 0.08);*/
+  /*border-radius: 8px;*/
   position: relative;
 }
 
 .tile-slot:focus-within .terminal-tile {
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .terminal-close-floating {
@@ -634,8 +630,7 @@ body,
   flex: 1;
   display: flex;
   align-items: stretch;
-  padding: 16px;
-  gap: 12px;
+  gap: 7px;
   overflow: hidden;
 }
 
@@ -647,7 +642,6 @@ body,
 .tiles-horizontal .tile-slot {
   min-width: 700px;
   flex: 0 0 auto;
-  display: flex;
 }
 
 .tiles-projects {
@@ -661,20 +655,15 @@ body,
   min-height: 0;
   flex: 0 0 100%;
   display: flex;
-  padding: 4px 0;
-  scroll-margin-block: 16px;
 }
 
 .project-terminal-row--active {
-  outline: 1px solid rgba(255, 255, 255, 0.08);
-  outline-offset: 0;
-  border-radius: 12px;
 }
 
 .project-terminal-track {
   width: 100%;
   display: flex;
-  gap: 12px;
+  gap: 7px;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -691,7 +680,7 @@ body,
 
 .tile-controls {
   display: flex;
-  gap: 4px;
+  gap: 7px;
   padding: 8px 12px;
   background: #f2f1ed;
   border-bottom: 1px solid #ddd;
@@ -1106,7 +1095,7 @@ body,
 .ide-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   width: 100%;
   padding: 8px 14px;
   background: transparent;
