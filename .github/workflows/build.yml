@@ -1,5 +1,8 @@
 name: Build
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     tags:
@@ -25,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
@@ -41,5 +44,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: release/${{ matrix.target }}/*
+          draft: true
+          omit_checksum: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
