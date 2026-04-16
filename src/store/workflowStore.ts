@@ -47,6 +47,7 @@ export interface TerminalNodeData {
   agentConfig?: AgentConfig;
   agentState: AgentState;
   lastOutput?: string;
+  scrollback?: string[];
 }
 
 export type TerminalNode = Nodes<TerminalNodeData, "terminal">;
@@ -74,7 +75,22 @@ interface WorkflowState {
   onNodesChange: OnNodesChange<TerminalNode>;
   onEdgesChange: OnEdgesChange<WorkflowEdge>;
   onConnect: OnConnect;
-  addNode: (position: { x: number; y: number }, projectId?: string) => string;
+  addNode: (
+    position: { x: number; y: number },
+    projectId?: string,
+    ptyIdOverride?: string,
+    labelOverride?: string,
+  ) => string;
+  addNodesFromSession: (
+    terminals: {
+      ptyId: string;
+      cwd: string;
+      projectId?: string;
+      label: string;
+      createdAt: number;
+      scrollback: string[];
+    }[],
+  ) => void;
   updateNodeData: (id: string, data: Partial<TerminalNodeData>) => void;
   deleteNode: (id: string) => void;
   setSelectedNode: (id: string | null) => void;
@@ -103,15 +119,17 @@ function createInitialNode(
   total: number,
   cwd?: string,
   projectId?: string,
+  ptyIdOverride?: string,
+  labelOverride?: string,
 ): TerminalNode {
-  const ptyId = uuidv4();
+  const ptyId = ptyIdOverride || uuidv4();
   return {
     id: uuidv4(),
     type: "terminal",
     position: { x: 0, y: 0 },
     data: {
       ptyId,
-      label: "Terminal " + (index + 1),
+      label: labelOverride || "Terminal " + (index + 1),
       cwd,
       projectId,
       createdAt: Date.now(),
@@ -173,7 +191,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     });
   },
 
-  addNode: (position, projectId) => {
+  addNode: (
+    position,
+    projectId,
+    ptyIdOverride?: string,
+    labelOverride?: string,
+  ) => {
     const state = get();
     const project = projectId
       ? state.projects.find((p) => p.id === projectId)
@@ -186,11 +209,47 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       state.nodes.length + 1,
       project?.path,
       projectId || state.activeProjectId || undefined,
+      ptyIdOverride,
+      labelOverride,
     );
     set((state) => ({
       nodes: [...state.nodes, newNode],
     }));
     return newNode.data.ptyId;
+  },
+
+  addNodesFromSession: (
+    terminals: {
+      ptyId: string;
+      cwd: string;
+      projectId?: string;
+      label: string;
+      createdAt: number;
+      scrollback: string[];
+    }[],
+  ) => {
+    const state = get();
+    const newNodes: TerminalNode[] = terminals.map((t, index) => ({
+      id: uuidv4(),
+      type: "terminal",
+      position: { x: 0, y: 0 },
+      data: {
+        ptyId: t.ptyId,
+        label: t.label || `Terminal ${index + 1}`,
+        cwd: t.cwd,
+        projectId: t.projectId,
+        createdAt: t.createdAt,
+        agentState: "idle" as const,
+        scrollback: t.scrollback,
+      },
+      style: {
+        width: "100%",
+        height: "100%",
+      },
+    }));
+    set((state) => ({
+      nodes: [...state.nodes, ...newNodes],
+    }));
   },
 
   updateNodeData: (id, data) => {

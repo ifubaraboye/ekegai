@@ -97,6 +97,12 @@ export function TerminalNode({ id, data, isActive }: Props) {
 
     terminal.open(containerRef.current);
 
+    if (data.scrollback && data.scrollback.length > 0) {
+      data.scrollback.forEach((line) => {
+        terminal.writeln(line);
+      });
+    }
+
     setTimeout(() => {
       fitAddon.fit();
     }, 100);

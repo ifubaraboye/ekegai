@@ -1,4 +1,11 @@
-import { app, ipcMain, BrowserWindow, shell, dialog } from "electron";
+import {
+  app,
+  ipcMain,
+  BrowserWindow,
+  shell,
+  dialog,
+  powerMonitor,
+} from "electron";
 import { join } from "path";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import log from "electron-log";
@@ -9,7 +16,52 @@ import * as fs from "fs";
 log.initialize();
 log.transports.file.level = "info";
 
+interface TerminalState {
+  ptyId: string;
+  cwd: string;
+  projectId?: string;
+  label: string;
+  createdAt: number;
+  scrollback: string[];
+}
+
+interface SessionData {
+  version: number;
+  terminals: TerminalState[];
+  lastSaved: number;
+}
+
+function getSessionFilePath(): string {
+  return join(app.getPath("userData"), "session-data.json");
+}
+
+function loadSessionFromDisk(): SessionData {
+  const filePath = getSessionFilePath();
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    log.warn("Failed to load session:", err);
+  }
+  return { version: 1, terminals: [], lastSaved: 0 };
+}
+
+function saveSessionToDisk(session: SessionData): void {
+  const filePath = getSessionFilePath();
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(session, null, 2), "utf-8");
+  } catch (err) {
+    log.error("Failed to save session:", err);
+  }
+}
+
+const MAX_SCROLLBACK_LINES = 500;
+
 const ptyMap = new Map<string, pty.IPty>();
+const scrollbackMap = new Map<string, string[]>();
+const ptyCwdMap = new Map<string, string>();
 
 function getShell(): string {
   if (process.platform === "win32") {
@@ -33,7 +85,7 @@ function createPty(
     }
   }
 
-  const shell = getShell();
+  const shellPath = getShell();
   const workingDir =
     cwd || process.env.HOME || process.env.USERPROFILE || os.homedir();
 
@@ -47,7 +99,7 @@ function createPty(
   env.TERM = "xterm-256color";
   env.COLORTERM = "truecolor";
 
-  const options: pty.IPtyOptions = {
+  const options: Record<string, unknown> = {
     name: "xterm-256color",
     cols,
     rows,
@@ -59,15 +111,29 @@ function createPty(
     options.useConpty = true;
   }
 
-  log.info(`Spawning shell: ${shell} in ${workingDir}`);
+  log.info(`Spawning shell: ${shellPath} in ${workingDir}`);
 
-  const ptyProcess = pty.spawn(shell, [], options);
+  const ptyProcess = pty.spawn(shellPath, [], options);
   ptyMap.set(ptyId, ptyProcess);
+  scrollbackMap.set(ptyId, []);
+  ptyCwdMap.set(ptyId, workingDir);
 
   ptyProcess.onData((data: string) => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win && !win.isDestroyed()) {
       win.webContents.send(`pty:output:${ptyId}`, data);
+    }
+    const scrollback = scrollbackMap.get(ptyId);
+    if (scrollback) {
+      const lines = data.split("\n");
+      for (const line of lines) {
+        if (line) {
+          scrollback.push(line);
+          if (scrollback.length > MAX_SCROLLBACK_LINES) {
+            scrollback.shift();
+          }
+        }
+      }
     }
   });
 
@@ -126,6 +192,45 @@ ipcMain.on("pty:resize", (_event, { ptyId, cols, rows }) => {
 
 ipcMain.on("pty:kill", (_event, { ptyId }) => {
   killPty(ptyId);
+  scrollbackMap.delete(ptyId);
+  ptyCwdMap.delete(ptyId);
+});
+
+function saveSession(): void {
+  const terminals: TerminalState[] = [];
+  ptyMap.forEach((ptyProcess, ptyId) => {
+    const cwd = ptyCwdMap.get(ptyId) || "";
+    const scrollback = scrollbackMap.get(ptyId) || [];
+    terminals.push({
+      ptyId,
+      cwd,
+      scrollback: [...scrollback],
+      label: "",
+      createdAt: Date.now(),
+    });
+  });
+  const session: SessionData = {
+    version: 1,
+    terminals,
+    lastSaved: Date.now(),
+  };
+  saveSessionToDisk(session);
+  log.info(`Session saved: ${terminals.length} terminals`);
+}
+
+function loadSession(): TerminalState[] {
+  const session = loadSessionFromDisk();
+  log.info(`Session loaded: ${session.terminals.length} terminals`);
+  return session.terminals;
+}
+
+ipcMain.handle("session:save", async () => {
+  saveSession();
+  return { success: true };
+});
+
+ipcMain.handle("session:load", async () => {
+  return loadSession();
 });
 
 ipcMain.handle("workflow:save", async (_event, { data }) => {
@@ -280,12 +385,34 @@ app.whenReady().then(() => {
   app.on("activate", function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  setInterval(() => {
+    saveSession();
+  }, 30000);
+
+  powerMonitor.on("suspend", () => {
+    log.info("System suspending, saving session...");
+    saveSession();
+  });
+
+  powerMonitor.on("resume", () => {
+    log.info("System resumed");
+  });
+
+  powerMonitor.on("lock-screen", () => {
+    log.info("Screen locked, saving session...");
+    saveSession();
+  });
+
+  app.on("before-quit", () => {
+    saveSession();
+  });
 });
 
 app.on("window-all-closed", () => {
-  for (const [ptyId] of ptyMap) {
+  ptyMap.forEach((_, ptyId) => {
     killPty(ptyId);
-  }
+  });
   if (process.platform !== "darwin") {
     app.quit();
   }

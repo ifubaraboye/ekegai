@@ -23,6 +23,17 @@ export interface ElectronAPI {
     path: string,
     command: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  saveSession: () => Promise<{ success: boolean }>;
+  loadSession: () => Promise<
+    {
+      ptyId: string;
+      cwd: string;
+      projectId?: string;
+      label: string;
+      createdAt: number;
+      scrollback: string[];
+    }[]
+  >;
 }
 
 const api: ElectronAPI = {
@@ -69,6 +80,14 @@ const api: ElectronAPI = {
   },
   ideOpen: async (path: string, command: string) => {
     const result = await ipcRenderer.invoke("ide:open", { path, command });
+    return result;
+  },
+  saveSession: async () => {
+    const result = await ipcRenderer.invoke("session:save");
+    return result;
+  },
+  loadSession: async () => {
+    const result = await ipcRenderer.invoke("session:load");
     return result;
   },
 };

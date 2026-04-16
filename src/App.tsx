@@ -23,6 +23,7 @@ export default function App() {
     setActiveTerminalId,
     setAvailableIDEs,
     sidebarCollapsed,
+    addNodesFromSession,
   } = useWorkflowStore();
 
   useEffect(() => {
@@ -30,7 +31,15 @@ export default function App() {
     window.electronAPI?.ideDetect().then((ides) => {
       setAvailableIDEs(ides);
     });
-  }, [setAvailableIDEs]);
+    window.electronAPI?.loadSession().then((session) => {
+      if (session && session.length > 0) {
+        addNodesFromSession(session);
+        session.forEach((terminal) => {
+          window.electronAPI?.ptyCreate(terminal.ptyId, 80, 24, terminal.cwd);
+        });
+      }
+    });
+  }, [setAvailableIDEs, addNodesFromSession]);
 
   const handleContextMenuAction = useCallback(
     (action: string) => {
