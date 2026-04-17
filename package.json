@@ -1,6 +1,6 @@
 {
   "name": "ekegai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Node-based workflow orchestrator with real OS terminal and AI agent support",
   "main": "./out/main/main.js",
@@ -76,7 +76,8 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "flatpak"
       ]
     },
     "nsis": {

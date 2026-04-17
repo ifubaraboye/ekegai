@@ -45,22 +45,18 @@ jobs:
         uses: softprops/action-gh-release@v2.0.0
         with:
           tag_name: ${{ github.ref_name }}
-          name: ekegai ${{ github.ref_name }} — Official Launch
+          name: ekegai ${{ github.ref_name }}
           body: |
-            ekegai is a modern desktop application that combines a node-based workflow canvas with real OS terminals.
+            ekegai ${{ github.ref_name }} — Overhauled UI
 
             ## What's New
-            - Node-Based Workflow Canvas — Visual workflow orchestration
-            - Real OS Terminals — Fully functional terminals in each node
-            - Niri-Style Terminal Tiling — Horizontal scrolling tile layout
-            - Multiple Projects — Manage multiple project directories
-            - VS Code-Style Sidebar — Collapsible sidebar with project groups
-            - IDE Integration — Open in VS Code, Zed, Cursor, or custom
-            - Terminal Persistence — Auto-save every 30 seconds
-            - Dark Mode — Warm, Cursor-inspired theme
+            - **UI Overhaul** — Removed terminal container backgrounds, cleaner flat design
+            - **Improved Gap** — Better spacing between terminal tiles
+            - **Fixed Sidebar** — Sidebar now correctly reflects selected terminal
+            - **Linux Flatpak** — Added Flatpak support for Linux
 
             ## Downloads
-            - Linux: `.AppImage`
+            - Linux: `.AppImage`, `.flatpak`
             - macOS: `.dmg`
 
             ## Requirements
