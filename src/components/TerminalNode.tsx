@@ -10,9 +10,10 @@ interface Props {
   id: string;
   data: TerminalNodeData;
   isActive?: boolean;
+  onClick?: () => void;
 }
 
-export function TerminalNode({ id, data, isActive }: Props) {
+export function TerminalNode({ id, data, isActive, onClick }: Props) {
   const deleteNode = useWorkflowStore((s) => s.deleteNode);
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -158,6 +159,10 @@ export function TerminalNode({ id, data, isActive }: Props) {
       className="terminal-tile"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
     >
       <div className="terminal-content" ref={containerRef} />
       {isHovered && (

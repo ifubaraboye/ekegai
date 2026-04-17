@@ -11,18 +11,19 @@ export default function App() {
   const {
     nodes,
     activeProjectId,
+    activeTerminalId,
+    setActiveTerminalId,
+    setActiveProject,
     setContextMenu,
     contextMenuPosition,
     selectedNodeId,
     deleteNode,
-    isAgentConfigModalOpen,
-    configModalNodeId,
     openAgentConfig,
     closeAgentConfig,
-    activeTerminalId,
-    setActiveTerminalId,
-    setAvailableIDEs,
+    isAgentConfigModalOpen,
+    configModalNodeId,
     sidebarCollapsed,
+    setAvailableIDEs,
     addNodesFromSession,
   } = useWorkflowStore();
 
@@ -115,6 +116,12 @@ export default function App() {
           activeTerminalId={activeTerminalId}
           nodes={nodes}
           activeProjectId={activeProjectId}
+          onTerminalClick={(terminalId, projectId) => {
+            if (projectId && projectId !== activeProjectId) {
+              setActiveProject(projectId);
+            }
+            setActiveTerminalId(terminalId);
+          }}
         />
       </div>
 

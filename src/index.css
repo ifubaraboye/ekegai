@@ -489,6 +489,7 @@ body,
   /*border: 1px solid rgba(255, 255, 255, 0.08);*/
   /*border-radius: 8px;*/
   position: relative;
+  cursor: pointer;
 }
 
 .tile-slot:focus-within .terminal-tile {
@@ -672,6 +673,7 @@ body,
   min-width: 700px;
   flex: 0 0 auto;
   display: flex;
+  cursor: pointer;
 }
 
 .dark .tile-container {
@@ -1019,9 +1021,9 @@ body,
 .terminal-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   width: 100%;
-  padding: 4px 10px 4px 32px;
+  padding: 5px 10px 5px 32px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -1045,29 +1047,30 @@ body,
   color: rgba(200, 198, 192, 0.95);
 }
 
-.status-dot {
+.status-badge {
   flex-shrink: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(200, 198, 192, 0.18);
-  transition: background 200ms ease;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
-.status-dot--live {
-  background: #50fa7b;
-  box-shadow: 0 0 6px rgba(80, 250, 123, 0.5);
-  animation: pulse-dot 2.4s ease-in-out infinite;
+.status-badge--working {
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.12);
 }
 
-@keyframes pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
+.status-badge--completed {
+  color: #50fa7b;
+  background: rgba(80, 250, 123, 0.1);
+}
+
+.status-badge--error {
+  color: #ff5555;
+  background: rgba(255, 85, 85, 0.12);
 }
 
 .terminal-label {

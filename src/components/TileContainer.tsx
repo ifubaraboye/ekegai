@@ -1,17 +1,22 @@
 import { useEffect, useRef } from "react";
-import { useWorkflowStore, type TerminalNode as TerminalNodeType } from "../store/workflowStore";
+import {
+  useWorkflowStore,
+  type TerminalNode as TerminalNodeType,
+} from "../store/workflowStore";
 import { TerminalNode } from "./TerminalNode";
 
 interface TileContainerProps {
   activeTerminalId: string | null;
   activeProjectId: string | null;
   nodes: TerminalNodeType[];
+  onTerminalClick?: (terminalId: string, projectId: string) => void;
 }
 
 export function TileContainer({
   activeTerminalId,
   activeProjectId,
   nodes,
+  onTerminalClick,
 }: TileContainerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const projects = useWorkflowStore((state) => state.projects);
@@ -68,6 +73,7 @@ export function TileContainer({
                     id={node.id}
                     data={node.data}
                     isActive={activeTerminalId === node.id}
+                    onClick={() => onTerminalClick?.(node.id, project.id)}
                   />
                 </div>
               ))}

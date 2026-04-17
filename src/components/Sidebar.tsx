@@ -22,12 +22,37 @@ const PROJECT_ACCENTS = [
   "#ff5555",
   "#6272a4",
 ];
+
 function projectAccent(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++)
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
   return PROJECT_ACCENTS[Math.abs(hash) % PROJECT_ACCENTS.length];
 }
+
+function timeAgo(ts?: number): string {
+  if (!ts) return "";
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+type BadgeVariant = "working" | "completed" | "error" | null;
+
+function agentBadge(state: string): BadgeVariant {
+  if (state === "running") return "working";
+  if (state === "done") return "completed";
+  if (state === "error") return "error";
+  return null;
+}
+
+const BADGE_LABELS: Record<NonNullable<BadgeVariant>, string> = {
+  working: "Working",
+  completed: "Completed",
+  error: "Error",
+};
 
 export function Sidebar() {
   const {
@@ -66,11 +91,6 @@ export function Sidebar() {
     const result = await window.electronAPI?.openFolder();
     if (result && !result.canceled && result.path) {
       addProject(result.path);
-      const projectName = result.path.split(/[/\\]/).pop() || "Untitled";
-      const projectId = [
-        ...projects,
-        { id: "", path: result.path, name: projectName },
-      ].find((p) => p.path === result.path)?.id;
       const newId = projects.length > 0 ? projects[projects.length - 1].id : "";
       setExpandedProjects((prev) => new Set(prev).add(newId || ""));
     }
@@ -259,6 +279,8 @@ export function Sidebar() {
                         projectNodes.map((node) => {
                           const isActiveNode = activeTerminalId === node.id;
                           const label = node.data.label || "terminal";
+                          const badge = agentBadge(node.data.agentState);
+                          const ts = timeAgo(node.data.createdAt);
 
                           return (
                             <div
@@ -273,11 +295,17 @@ export function Sidebar() {
                                 handleTerminalRowKeyDown(e, node.id, project.id)
                               }
                             >
-                              <span
-                                className={`status-dot ${isActiveNode ? "status-dot--live" : ""}`}
-                              />
+                              {badge && (
+                                <span className={`status-badge status-badge--${badge}`}>
+                                  {BADGE_LABELS[badge]}
+                                </span>
+                              )}
 
                               <span className="terminal-label">{label}</span>
+
+                              {ts && (
+                                <span className="terminal-ts">{ts}</span>
+                              )}
 
                               <button
                                 type="button"
