@@ -1,144 +1,272 @@
-import { useCallback, useState, useEffect } from "react";
-import { TileContainer } from "./components/TileContainer";
-import { NodeContextMenu } from "./components/NodeContextMenu";
-import { AgentConfigModal } from "./components/AgentConfigModal";
-import { Sidebar } from "./components/Sidebar";
-import { useWorkflowStore } from "./store/workflowStore";
+import { useState, useEffect, useCallback } from "react"
+import { useOnResize, useTerminalDimensions } from "@opentui/react"
+import { colors } from "./colors"
+import Sidebar from "./components/Sidebar"
+import MainArea from "./components/MainArea"
+import StatusBar from "./components/StatusBar"
+import CommandPalette from "./components/CommandPalette"
+import NotificationPanel from "./components/NotificationPanel"
+import { useWorkspaceStore, generateWorkspaceId } from "./store/workspaces"
+import { usePaneStore } from "./store/panes"
+import { usePtyOutput } from "./hooks/usePtyOutput"
+import { useGlobalKeyboard, type GlobalActions } from "./hooks/useKeyboard"
+import { useInputMode } from "./store/inputMode"
+import PtyPane from "./components/PtyPane"
+import { resizeAll } from "./pty/registry"
 
-export default function App() {
-  const [isDark] = useState(true);
+function PtyHost({ paneId }: { paneId: string }) {
+  const pane = usePaneStore((s) => s.panes[paneId])
+  usePtyOutput({ paneId, cwd: process.env.HOME || "/" })
+  if (!pane) return null
+  return <PtyPane paneId={paneId} />
+}
 
-  const {
-    nodes,
-    activeProjectId,
-    activeTerminalId,
-    setActiveTerminalId,
-    setActiveProject,
-    setContextMenu,
-    contextMenuPosition,
-    selectedNodeId,
-    deleteNode,
-    openAgentConfig,
-    closeAgentConfig,
-    isAgentConfigModalOpen,
-    configModalNodeId,
-    sidebarCollapsed,
-    setAvailableIDEs,
-    addNodesFromSession,
-  } = useWorkflowStore();
-
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-    window.electronAPI?.ideDetect().then((ides) => {
-      setAvailableIDEs(ides);
-    });
-    window.electronAPI?.loadSession().then((session) => {
-      if (session && session.length > 0) {
-        addNodesFromSession(session);
-        session.forEach((terminal) => {
-          window.electronAPI?.ptyCreate(terminal.ptyId, 80, 24, terminal.cwd);
-        });
-      }
-    });
-  }, [setAvailableIDEs, addNodesFromSession]);
-
-  const handleContextMenuAction = useCallback(
-    (action: string) => {
-      if (!selectedNodeId) return;
-
-      const store = useWorkflowStore.getState();
-      switch (action) {
-        case "run": {
-          const node = store.nodes.find((n) => n.id === selectedNodeId);
-          if (node?.data.agentConfig) {
-            const downstream = store.getDownstreamNodes(selectedNodeId);
-            let inputData = node.data.lastOutput || "";
-
-            for (const downstreamNode of downstream) {
-              if (downstreamNode.data.agentConfig) {
-                store.runAgent(downstreamNode.id, inputData);
-              }
-            }
-
-            if (downstream.length === 0) {
-              store.runAgent(selectedNodeId, inputData);
-            }
-          }
-          break;
-        }
-        case "configure":
-          openAgentConfig(selectedNodeId);
-          break;
-        case "delete":
-          deleteNode(selectedNodeId);
-          break;
-        case "terminal":
-          break;
-      }
-      setContextMenu(null);
-    },
-    [selectedNodeId, deleteNode, openAgentConfig, setContextMenu],
-  );
-
-  const activeProjectNodes = activeProjectId
-    ? nodes.filter((n) => n.data.projectId === activeProjectId)
-    : nodes;
-
-  useEffect(() => {
-    if (activeProjectNodes.length === 0) {
-      if (activeProjectId && activeTerminalId !== null) {
-        setActiveTerminalId(null);
-      }
-      return;
-    }
-
-    const activeTerminalInProject = activeProjectNodes.some(
-      (node) => node.id === activeTerminalId,
-    );
-
-    if (!activeTerminalId || !activeTerminalInProject) {
-      setActiveTerminalId(activeProjectNodes[0].id);
-    }
-  }, [
-    activeProjectId,
-    activeProjectNodes,
-    activeTerminalId,
-    setActiveTerminalId,
-  ]);
+function PaneRenderer() {
+  const activeId = useWorkspaceStore((s) => s.activeWorkspaceId)
+  const workspaces = useWorkspaceStore((s) => s.workspaces)
+  const activeWs = activeId ? workspaces[activeId] : null
+  const paneIds = activeWs?.paneIds ?? []
 
   return (
-    <div className="app-container">
-      <Sidebar />
-      <div
-        className={`tile-container-wrapper ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
-      >
-        <TileContainer
-          activeTerminalId={activeTerminalId}
-          nodes={nodes}
-          activeProjectId={activeProjectId}
-          onTerminalClick={(terminalId, projectId) => {
-            if (projectId && projectId !== activeProjectId) {
-              setActiveProject(projectId);
-            }
-            setActiveTerminalId(terminalId);
-          }}
-        />
-      </div>
+    <>
+      {paneIds.map((pid) => (
+        <PtyHost key={pid} paneId={pid} />
+      ))}
+    </>
+  )
+}
 
-      {contextMenuPosition && (
-        <NodeContextMenu
-          position={contextMenuPosition}
-          onAction={handleContextMenuAction}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
+export default function App() {
+  const [showPalette, setShowPalette] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [sidebarVisible, setSidebarVisible] = useState(true)
+  const mode = useInputMode((s) => s.mode)
 
-      {isAgentConfigModalOpen && configModalNodeId && (
-        <AgentConfigModal
-          nodeId={configModalNodeId}
-          onClose={closeAgentConfig}
-        />
+  const addWorkspace = useWorkspaceStore((s) => s.addWorkspace)
+  const addPane = usePaneStore((s) => s.addPane)
+
+  useEffect(() => {
+    const wsId = generateWorkspaceId()
+    const paneId = "main"
+
+    addPane({
+      id: paneId,
+      workspaceId: wsId,
+      title: "terminal",
+      ptyPid: null,
+      lines: [],
+      status: "idle",
+      cwd: process.env.HOME || "/",
+      isFocused: true,
+    })
+
+    addWorkspace({
+      id: wsId,
+      name: "workspace-1",
+      cwd: process.env.HOME || "/",
+      gitBranch: null,
+      listeningPorts: [],
+      paneIds: [paneId],
+      splitLayout: "vertical",
+      hasUnread: false,
+    })
+
+    usePaneStore.getState().focusPane(paneId)
+  }, [])
+
+  useOnResize((width, height) => {
+    const sidebarWidth = 20
+    const mainCols = Math.max(20, width - sidebarWidth - 2)
+    const mainRows = Math.max(5, height - 2)
+    resizeAll(mainCols, mainRows)
+  })
+
+  const closePane = useCallback(() => {
+    const ps = usePaneStore.getState()
+    const ws = useWorkspaceStore.getState()
+    const focusedId = ps.focusedPaneId
+    if (!focusedId) return
+    const pane = ps.panes[focusedId]
+    if (!pane) return
+    ws.removePaneFromWorkspace(pane.workspaceId, focusedId)
+    ps.removePane(focusedId)
+  }, [])
+
+  const closeWorkspace = useCallback(() => {
+    const ws = useWorkspaceStore.getState()
+    const id = ws.activeWorkspaceId
+    if (!id) return
+    const workspace = ws.workspaces[id]
+    if (!workspace) return
+    for (const pid of workspace.paneIds) {
+      usePaneStore.getState().removePane(pid)
+    }
+    ws.removeWorkspace(id)
+  }, [])
+
+  const newPane = useCallback(() => {
+    const wsState = useWorkspaceStore.getState()
+    const activeWsId = wsState.activeWorkspaceId
+    if (!activeWsId) return
+    const ws = wsState.workspaces[activeWsId]
+    if (!ws) return
+    const paneId = `pane-${Date.now()}`
+    usePaneStore.getState().addPane({
+      id: paneId,
+      workspaceId: activeWsId,
+      title: "terminal",
+      ptyPid: null,
+      lines: [],
+      status: "idle",
+      cwd: ws.cwd,
+      isFocused: false,
+    })
+    wsState.addPaneToWorkspace(activeWsId, paneId)
+    usePaneStore.getState().focusPane(paneId)
+  }, [])
+
+  const newWorkspace = useCallback(() => {
+    const wsId = generateWorkspaceId()
+    const paneId = `pane-${Date.now()}`
+    usePaneStore.getState().addPane({
+      id: paneId,
+      workspaceId: wsId,
+      title: "terminal",
+      ptyPid: null,
+      lines: [],
+      status: "idle",
+      cwd: process.env.HOME || "/",
+      isFocused: false,
+    })
+    const wsCount = Object.keys(useWorkspaceStore.getState().workspaces).length
+    useWorkspaceStore.getState().addWorkspace({
+      id: wsId,
+      name: `workspace-${wsCount + 1}`,
+      cwd: process.env.HOME || "/",
+      gitBranch: null,
+      listeningPorts: [],
+      paneIds: [paneId],
+      splitLayout: "vertical",
+      hasUnread: false,
+    })
+    usePaneStore.getState().focusPane(paneId)
+  }, [])
+
+  const focusDirection = useCallback((dir: "left" | "right" | "up" | "down") => {
+    const ps = usePaneStore.getState()
+    const ws = useWorkspaceStore.getState()
+    const activeWsId = ws.activeWorkspaceId
+    if (!activeWsId) return
+    const workspace = ws.workspaces[activeWsId]
+    if (!workspace) return
+    const ids = workspace.paneIds
+    const currentIdx = ps.focusedPaneId ? ids.indexOf(ps.focusedPaneId) : -1
+    let nextIdx = currentIdx
+    if (dir === "right") nextIdx = Math.min(currentIdx + 1, ids.length - 1)
+    else if (dir === "left") nextIdx = Math.max(currentIdx - 1, 0)
+    else if (dir === "down") {
+      if (workspace.splitLayout === "horizontal") {
+        nextIdx = Math.min(currentIdx + 1, ids.length - 1)
+      }
+    } else if (dir === "up") {
+      if (workspace.splitLayout === "horizontal") {
+        nextIdx = Math.max(currentIdx - 1, 0)
+      }
+    }
+    if (nextIdx >= 0 && nextIdx < ids.length) {
+      ps.focusPane(ids[nextIdx])
+    }
+  }, [])
+
+  const jumpToWorkspace = useCallback((n: number) => {
+    const ws = useWorkspaceStore.getState()
+    const ids = Object.keys(ws.workspaces)
+    if (n <= ids.length && n > 0) {
+      const targetId = ids[n - 1]
+      ws.setActive(targetId)
+      const target = ws.workspaces[targetId]
+      if (target?.paneIds[0]) {
+        usePaneStore.getState().focusPane(target.paneIds[0])
+      }
+    }
+  }, [])
+
+  const jumpToUnread = useCallback(() => {
+    const ws = useWorkspaceStore.getState()
+    const unreadWs = Object.values(ws.workspaces).find((w) => w.hasUnread)
+    if (unreadWs) {
+      ws.setActive(unreadWs.id)
+      if (unreadWs.paneIds[0]) {
+        usePaneStore.getState().focusPane(unreadWs.paneIds[0])
+      }
+      ws.setUnread(unreadWs.id, false)
+    }
+  }, [])
+
+  const renamePane = useCallback(() => {
+    const ps = usePaneStore.getState()
+    const focusedId = ps.focusedPaneId
+    if (!focusedId) return
+    const pane = ps.panes[focusedId]
+    if (!pane) return
+    const newName = prompt("Rename pane:", pane.title)
+    if (newName) {
+      ps.setTitle(focusedId, newName)
+    }
+  }, [])
+
+  const quit = useCallback(() => {
+    const renderer = (globalThis as any).__opentui_renderer
+    renderer?.destroy()
+    process.exit(0)
+  }, [])
+
+  const actions: GlobalActions = {
+    togglePalette: () => setShowPalette((v) => !v),
+    toggleNotifications: () => setShowNotifications((v) => !v),
+    newWorkspace,
+    closePane,
+    closeWorkspace,
+    splitRight: newPane,
+    splitDown: () => {
+      const wsState = useWorkspaceStore.getState()
+      const activeWsId = wsState.activeWorkspaceId
+      if (!activeWsId) return
+      const ws = wsState.workspaces[activeWsId]
+      if (!ws) return
+      wsState.setSplitLayout(activeWsId, "horizontal")
+      newPane()
+    },
+    jumpToUnread,
+    focusDirection,
+    jumpToWorkspace,
+    toggleSidebar: () => setSidebarVisible((v) => !v),
+    renamePane,
+    quit,
+  }
+
+  useGlobalKeyboard(actions)
+
+  return (
+    <box
+      flexDirection="column"
+      width="100%"
+      height="100%"
+      backgroundColor={colors.background}
+    >
+      <box flexDirection="row" flexGrow={1}>
+        {sidebarVisible && <Sidebar />}
+        <MainArea>
+          <PaneRenderer />
+        </MainArea>
+      </box>
+
+      <StatusBar />
+
+      {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
+      {showNotifications && (
+        <NotificationPanel onClose={() => setShowNotifications(false)} />
       )}
-    </div>
-  );
+    </box>
+  )
 }

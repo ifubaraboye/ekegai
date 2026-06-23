@@ -1,34 +1,6 @@
-# Dependencies
 node_modules/
-
-# Build output
-out/
 dist/
-release/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
+*.tsbuildinfo
 .env
 .env.local
-.env.*.local
-
-# Debug
-*.tsbuildinfo
-
-# Design
-design.md
-.codex
-Ses.md
+session.json

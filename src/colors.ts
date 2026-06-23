@@ -1,0 +1,17 @@
+export const colors = {
+  background: "#1a1b26",
+  sidebarBg: "#16161e",
+  activeItemBg: "#1e2030",
+  borderDefault: "#414868",
+  borderFocused: "#7aa2f7",
+  borderWaiting: "#4C9EEB",
+  borderError: "#f7768e",
+  textPrimary: "#c0caf5",
+  textMuted: "#565f89",
+  textAccent: "#7aa2f7",
+  statusIdle: "#9ece6a",
+  statusRunning: "#e0af68",
+  statusWaiting: "#4C9EEB",
+  statusError: "#f7768e",
+  notificationDot: "#4C9EEB",
+} as const
