@@ -1,0 +1,20 @@
+{
+  "name": "ekegai-tui",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.tsx",
+    "build": "bun build src/index.tsx --outfile dist/ekegai --target bun",
+    "start": "bun dist/ekegai"
+  },
+  "dependencies": {
+    "@opentui/core": "latest",
+    "@opentui/react": "latest",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/react": "^18",
+    "typescript": "^5"
+  }
+}
