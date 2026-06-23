@@ -268,6 +268,10 @@ export default function App() {
     if (firstPane) usePaneStore.getState().focusPane(firstPane)
   }, [sidebarIndex])
 
+  const sidebarFocus = useCallback(() => {
+    setSidebarIndex((i) => (i >= 0 ? i : 0))
+  }, [])
+
   const notificationMove = useCallback(
     (dir: -1 | 1) => setNotificationIndex((i) => {
       const notifs = useNotificationStore.getState().notifications
@@ -298,6 +302,7 @@ export default function App() {
       count: Object.keys(useWorkspaceStore.getState().workspaces).length,
       onMove: sidebarMove,
       onActivate: sidebarActivate,
+      onFocus: sidebarFocus,
     },
   )
 

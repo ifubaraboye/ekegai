@@ -37,6 +37,7 @@ interface SidebarState {
   count: number
   onMove: (dir: -1 | 1) => void
   onActivate: () => void
+  onFocus: () => void
 }
 
 function forwardToFocusedPty(sequence: string) {
@@ -100,10 +101,16 @@ export function useGlobalKeyboard(
     }
 
     if (!overlays.palette && !overlays.notifications && sidebar.visible && sidebar.count > 0) {
-      if (sidebar.focused) {
+      if (key.name === "up" || key.name === "down") {
+        if (!sidebar.focused) {
+          sidebar.onFocus()
+        }
         if (key.name === "up" && sidebar.selectedIndex > 0) { sidebar.onMove(-1); return }
         if (key.name === "down" && sidebar.selectedIndex < sidebar.count - 1) { sidebar.onMove(1); return }
-        if (key.name === "return" || key.name === "enter") { sidebar.onActivate(); return }
+      }
+      if (sidebar.focused && (key.name === "return" || key.name === "enter")) {
+        sidebar.onActivate()
+        return
       }
     }
 
@@ -117,6 +124,15 @@ export function useGlobalKeyboard(
 
     if (key.meta && key.name in { left: 1, right: 1, up: 1, down: 1 }) {
       actions.focusDirection(key.name as "left" | "right" | "up" | "down")
+      return
+    }
+
+    if (key.ctrl && key.name === "tab") {
+      actions.jumpToWorkspace(Math.min(sidebar.selectedIndex + 2, sidebar.count))
+      return
+    }
+    if (key.ctrl && key.shift && key.name === "tab") {
+      actions.jumpToWorkspace(Math.max(sidebar.selectedIndex, 1))
       return
     }
 
