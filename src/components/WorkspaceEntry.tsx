@@ -4,13 +4,13 @@ import { colors } from "../colors"
 interface WorkspaceEntryProps {
   workspace: Workspace
   isActive: boolean
-  onClick?: () => void
+  isFocused?: boolean
 }
 
-export default function WorkspaceEntry({ workspace, isActive }: WorkspaceEntryProps) {
+export default function WorkspaceEntry({ workspace, isActive, isFocused }: WorkspaceEntryProps) {
   const prefix = workspace.hasUnread ? "↯" : workspace.paneIds.length > 0 ? "●" : "○"
   const prefixColor = workspace.hasUnread ? colors.notificationDot : colors.statusIdle
-  const bg = isActive ? colors.activeItemBg : "transparent"
+  const bg = isActive ? colors.activeItemBg : isFocused ? "#2a2a3e" : "transparent"
 
   return (
     <box flexDirection="column" paddingX={1} backgroundColor={bg}>

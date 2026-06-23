@@ -8,7 +8,7 @@ import { usePaneStore } from "./store/panes"
 await ensureConfigDir()
 
 const renderer = await createCliRenderer({
-  exitOnCtrlC: false,
+  exitOnCtrlC: true,
 })
 
 ;(globalThis as any).__opentui_renderer = renderer

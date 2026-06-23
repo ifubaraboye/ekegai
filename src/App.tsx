@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useOnResize, useTerminalDimensions } from "@opentui/react"
+import { useOnResize } from "@opentui/react"
 import { colors } from "./colors"
 import Sidebar from "./components/Sidebar"
 import MainArea from "./components/MainArea"
@@ -8,6 +8,7 @@ import CommandPalette from "./components/CommandPalette"
 import NotificationPanel from "./components/NotificationPanel"
 import { useWorkspaceStore, generateWorkspaceId } from "./store/workspaces"
 import { usePaneStore } from "./store/panes"
+import { useNotificationStore } from "./store/notifications"
 import { usePtyOutput } from "./hooks/usePtyOutput"
 import { useGlobalKeyboard, type GlobalActions } from "./hooks/useKeyboard"
 import { useInputMode } from "./store/inputMode"
@@ -40,6 +41,8 @@ export default function App() {
   const [showPalette, setShowPalette] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [sidebarVisible, setSidebarVisible] = useState(true)
+  const [sidebarIndex, setSidebarIndex] = useState(-1)
+  const [notificationIndex, setNotificationIndex] = useState(0)
   const mode = useInputMode((s) => s.mode)
 
   const addWorkspace = useWorkspaceStore((s) => s.addWorkspace)
@@ -221,9 +224,16 @@ export default function App() {
     process.exit(0)
   }, [])
 
+  const closePalette = useCallback(() => setShowPalette(false), [])
+  const closeNotifications = useCallback(() => setShowNotifications(false), [])
+
   const actions: GlobalActions = {
     togglePalette: () => setShowPalette((v) => !v),
-    toggleNotifications: () => setShowNotifications((v) => !v),
+    closePalette,
+    toggleNotifications: () => {
+      setShowNotifications((v) => { if (!v) setNotificationIndex(0); return !v })
+    },
+    closeNotifications,
     newWorkspace,
     closePane,
     closeWorkspace,
@@ -245,7 +255,51 @@ export default function App() {
     quit,
   }
 
-  useGlobalKeyboard(actions)
+  const sidebarMove = useCallback(
+    (dir: -1 | 1) => setSidebarIndex((i) => Math.max(0, Math.min(i + dir, Object.keys(useWorkspaceStore.getState().workspaces).length - 1))),
+    [],
+  )
+  const sidebarActivate = useCallback(() => {
+    const wsList = Object.values(useWorkspaceStore.getState().workspaces)
+    const ws = wsList[sidebarIndex]
+    if (!ws) return
+    useWorkspaceStore.getState().setActive(ws.id)
+    const firstPane = ws.paneIds[0]
+    if (firstPane) usePaneStore.getState().focusPane(firstPane)
+  }, [sidebarIndex])
+
+  const notificationMove = useCallback(
+    (dir: -1 | 1) => setNotificationIndex((i) => {
+      const notifs = useNotificationStore.getState().notifications
+      return Math.max(0, Math.min(i + dir, notifs.length - 1))
+    }),
+    [],
+  )
+  const notificationActivate = useCallback(() => {
+    const notifs = useNotificationStore.getState().notifications
+    const n = notifs[notificationIndex]
+    if (n) useNotificationStore.getState().markRead(n.id)
+  }, [notificationIndex])
+
+  useGlobalKeyboard(
+    actions,
+    {
+      palette: showPalette,
+      notifications: showNotifications,
+      notificationIndex,
+      notificationCount: useNotificationStore.getState().notifications.length,
+      onNotificationMove: notificationMove,
+      onNotificationActivate: notificationActivate,
+    },
+    {
+      visible: sidebarVisible,
+      focused: sidebarIndex >= 0 && !showPalette && !showNotifications,
+      selectedIndex: Math.max(0, sidebarIndex),
+      count: Object.keys(useWorkspaceStore.getState().workspaces).length,
+      onMove: sidebarMove,
+      onActivate: sidebarActivate,
+    },
+  )
 
   return (
     <box
@@ -255,7 +309,7 @@ export default function App() {
       backgroundColor={colors.background}
     >
       <box flexDirection="row" flexGrow={1}>
-        {sidebarVisible && <Sidebar />}
+        {sidebarVisible && <Sidebar focusedIndex={sidebarIndex} />}
         <MainArea>
           <PaneRenderer />
         </MainArea>

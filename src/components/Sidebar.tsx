@@ -3,7 +3,11 @@ import { usePaneStore } from "../store/panes"
 import { colors } from "../colors"
 import WorkspaceEntry from "./WorkspaceEntry"
 
-export default function Sidebar() {
+interface SidebarProps {
+  focusedIndex: number
+}
+
+export default function Sidebar({ focusedIndex }: SidebarProps) {
   const workspaces = useWorkspaceStore((s) => s.workspaces)
   const activeId = useWorkspaceStore((s) => s.activeWorkspaceId)
   const setActive = useWorkspaceStore((s) => s.setActive)
@@ -28,20 +32,12 @@ export default function Sidebar() {
         <text fg={colors.textMuted}>  (empty)</text>
       )}
 
-      {entries.map((ws) => (
-        <box
-          key={ws.id}
-          onClick={() => {
-            setActive(ws.id)
-            const firstPane = ws.paneIds[0]
-            if (firstPane && panes[firstPane]) {
-              focusPane(firstPane)
-            }
-          }}
-        >
+      {entries.map((ws, i) => (
+        <box key={ws.id}>
           <WorkspaceEntry
             workspace={ws}
             isActive={ws.id === activeId}
+            isFocused={i === focusedIndex}
           />
         </box>
       ))}
