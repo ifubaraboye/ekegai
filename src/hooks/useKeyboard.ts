@@ -1,6 +1,7 @@
 import { useKeyboard as useOtuiKeyboard } from "@opentui/react"
 import { useInputMode } from "../store/inputMode"
 import { usePaneStore } from "../store/panes"
+import { writeToPty } from "../pty/registry"
 
 export interface GlobalActions {
   togglePalette: () => void
@@ -18,6 +19,13 @@ export interface GlobalActions {
   quit: () => void
 }
 
+function forwardToFocusedPty(sequence: string) {
+  const focusedId = usePaneStore.getState().focusedPaneId
+  if (focusedId) {
+    writeToPty(focusedId, sequence)
+  }
+}
+
 export function useGlobalKeyboard(actions: GlobalActions) {
   const setMode = useInputMode((s) => s.setMode)
   const mode = useInputMode((s) => s.mode)
@@ -28,13 +36,7 @@ export function useGlobalKeyboard(actions: GlobalActions) {
         setMode("ui")
         return
       }
-      const focusedId = usePaneStore.getState().focusedPaneId
-      if (focusedId) {
-        const pane = usePaneStore.getState().panes[focusedId]
-        if (pane?.ptyPid) {
-          usePaneStore.getState().setStatus(focusedId, "running")
-        }
-      }
+      forwardToFocusedPty(key.sequence)
       return
     }
 
@@ -48,22 +50,24 @@ export function useGlobalKeyboard(actions: GlobalActions) {
     if (key.ctrl && key.shift && key.name === "d") { actions.splitDown(); return }
     if (key.ctrl && key.name === "b") { actions.toggleSidebar(); return }
     if (key.ctrl && key.name === "r") { actions.renamePane(); return }
-    if (key.name === "q" && !key.ctrl) { actions.quit(); return }
     if (key.name === "escape") { actions.togglePalette(); return }
+    if (key.ctrl && key.name === "q") { actions.quit(); return }
 
-    if (key.meta) {
-      const dirMap: Record<string, "left" | "right" | "up" | "down"> = {
-        left: "left", right: "right", up: "up", down: "down",
-      }
-      if (key.name in dirMap) {
-        actions.focusDirection(dirMap[key.name])
-        return
-      }
+    if (key.meta && key.name in { left: 1, right: 1, up: 1, down: 1 }) {
+      actions.focusDirection(key.name as "left" | "right" | "up" | "down")
+      return
     }
 
     if (key.ctrl && /^[1-9]$/.test(key.name)) {
       actions.jumpToWorkspace(parseInt(key.name))
       return
     }
+
+    if (key.ctrl && key.shift && key.name === "z") {
+      setMode("pty")
+      return
+    }
+
+    forwardToFocusedPty(key.sequence)
   })
 }

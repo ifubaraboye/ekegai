@@ -163,6 +163,16 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
         onClose()
       },
     },
+    {
+      id: "quit",
+      label: "Quit ekegai",
+      description: "Exit the application",
+      action: () => {
+        const renderer = (globalThis as any).__opentui_renderer
+        renderer?.destroy()
+        process.exit(0)
+      },
+    },
   ]
 
   const filtered = query
