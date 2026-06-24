@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react"
 import { colors } from "./colors"
 import Sidebar from "./components/Sidebar"
 import MainArea from "./components/MainArea"
-import StatusBar from "./components/StatusBar"
 import CommandPalette from "./components/CommandPalette"
 import NotificationPanel from "./components/NotificationPanel"
 import TerminalPane from "./components/TerminalPane"
@@ -142,8 +141,6 @@ export default function App() {
           <TerminalRenderer />
         </MainArea>
       </box>
-
-      <StatusBar />
 
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
       {showNotifications && (

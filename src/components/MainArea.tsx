@@ -18,7 +18,7 @@ export default function MainArea({ children }: MainAreaProps) {
         backgroundColor={colors.background}
         padding={1}
       >
-        <box flexGrow={1} backgroundColor="#1e2030" alignItems="center" justifyContent="center">
+        <box flexGrow={1} backgroundColor="#000000" alignItems="center" justifyContent="center">
           <text fg={colors.textMuted}>No panes open</text>
         </box>
       </box>
