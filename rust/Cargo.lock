@@ -1468,6 +1468,7 @@ version = "0.1.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
+ "async-channel",
  "chrono",
  "keyring",
  "parking_lot",
@@ -1481,6 +1482,7 @@ dependencies = [
 name = "ekegai-desktop"
 version = "0.1.0"
 dependencies = [
+ "alacritty_terminal",
  "anyhow",
  "ekegai-core",
  "gpui",

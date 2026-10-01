@@ -19,11 +19,10 @@ const SCHEMA_VERSION: u32 = 1;
 /// Where sessions live. `$XDG_DATA_HOME/ekegai/session.json` on Linux,
 /// `~/Library/Application Support/ekegai` on macOS.
 pub fn default_path() -> PathBuf {
-    if let Ok(dir) = std::env::var("XDG_DATA_HOME") {
-        if !dir.is_empty() {
+    if let Ok(dir) = std::env::var("XDG_DATA_HOME")
+        && !dir.is_empty() {
             return Path::new(&dir).join("ekegai").join("session.json");
         }
-    }
     if let Ok(home) = std::env::var("HOME") {
         return Path::new(&home)
             .join(".local")

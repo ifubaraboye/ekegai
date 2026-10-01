@@ -12,6 +12,7 @@ name = "ekegai"
 path = "src/main.rs"
 
 [dependencies]
+alacritty_terminal = { workspace = true }
 ekegai-core = { path = "../ekegai-core" }
 gpui = { workspace = true }
 anyhow = { workspace = true }

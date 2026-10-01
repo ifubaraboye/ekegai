@@ -296,7 +296,7 @@ mod tests {
 
         graph.remove_node(a_id);
         assert!(graph.edges.is_empty());
-        assert!(graph.nodes.get(&a_id).is_none());
+        assert!(!graph.nodes.contains_key(&a_id));
     }
 
     #[test]

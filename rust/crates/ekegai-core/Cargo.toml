@@ -16,6 +16,7 @@ keyring = ["dep:keyring"]
 [dependencies]
 alacritty_terminal = { workspace = true }
 anyhow = { workspace = true }
+async-channel = { workspace = true }
 chrono = { workspace = true }
 parking_lot = { workspace = true }
 portable-pty = { workspace = true }

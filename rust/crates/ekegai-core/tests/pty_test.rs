@@ -17,7 +17,6 @@ fn cwd() -> PathBuf {
 /// Wait until `predicate` holds for the session's rendered screen, or time out.
 fn wait_for_screen(session: &mut PtySession, needle: &str, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
-    let mut seen = String::new();
     while Instant::now() < deadline {
         for event in session.drain_events() {
             if let SessionEvent::Error(err) = event {
@@ -25,7 +24,7 @@ fn wait_for_screen(session: &mut PtySession, needle: &str, timeout: Duration) ->
             }
         }
         let frame = session.snapshot();
-        seen = frame
+        let seen = frame
             .rows
             .iter()
             .map(|row| row.iter().map(|c| c.c).collect::<String>())

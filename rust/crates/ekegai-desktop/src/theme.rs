@@ -7,6 +7,7 @@
 //! The layout constants below are measured in rems so the sidebar scales with
 //! the user's text size.
 
+// Staged for the sidebar milestone; see scaling.rs.
 use gpui::{Rgba, rgb};
 
 use crate::scaling::sp;

@@ -14,12 +14,12 @@
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use alacritty_terminal::event::VoidListener;
+use async_channel::{Receiver, Sender, TryRecvError};
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::index::{Column, Line, Point};
 use alacritty_terminal::term::cell::Cell;
@@ -44,6 +44,13 @@ pub struct StyledChar {
     pub underline: bool,
     pub dim: bool,
     pub reverse: bool,
+    /// This cell holds a double-width glyph (CJK, emoji). It occupies two
+    /// grid columns; the following cell is a `WIDE_CHAR_SPACER` and must not
+    /// be drawn.
+    pub wide: bool,
+    /// This cell is the trailing half of a wide glyph and carries no glyph of
+    /// its own.
+    pub wide_spacer: bool,
 }
 
 /// One row of the visible screen.
@@ -119,6 +126,9 @@ impl TermHandle {
                     dim: flags.contains(alacritty_terminal::term::cell::Flags::DIM),
                     reverse: flags
                         .contains(alacritty_terminal::term::cell::Flags::INVERSE),
+                    wide: flags.contains(alacritty_terminal::term::cell::Flags::WIDE_CHAR),
+                    wide_spacer: flags
+                        .contains(alacritty_terminal::term::cell::Flags::WIDE_CHAR_SPACER),
                 });
             }
             rows.push(row);
@@ -200,7 +210,7 @@ impl PtySession {
             dims: Mutex::new(dims),
         });
 
-        let (tx, rx) = channel::<SessionEvent>();
+        let (tx, rx) = async_channel::unbounded::<SessionEvent>();
 
         let pid = child.process_id();
 
@@ -216,7 +226,7 @@ impl PtySession {
                     loop {
                         match reader.read(&mut buf) {
                             Ok(0) => {
-                                let _ = tx.send(SessionEvent::Exited(0));
+                                let _ = tx.try_send(SessionEvent::Exited(0));
                                 break;
                             }
                             Ok(n) => {
@@ -224,12 +234,12 @@ impl PtySession {
                                     let mut term = handle.term.lock().expect("term poisoned");
                                     parser.advance(&mut *term, &buf[..n]);
                                 }
-                                if tx.send(SessionEvent::Frame).is_err() {
+                                if tx.try_send(SessionEvent::Frame).is_err() {
                                     break;
                                 }
                             }
                             Err(_) => {
-                                let _ = tx.send(SessionEvent::Exited(1));
+                                let _ = tx.try_send(SessionEvent::Exited(1));
                                 break;
                             }
                         }
@@ -256,10 +266,10 @@ impl PtySession {
                     }
                     match status {
                         Ok(status) => {
-                            let _ = tx.send(SessionEvent::Exited(exit_code(status)));
+                            let _ = tx.try_send(SessionEvent::Exited(exit_code(status)));
                         }
                         Err(err) => {
-                            let _ = tx.send(SessionEvent::Error(err.to_string()));
+                            let _ = tx.try_send(SessionEvent::Error(err.to_string()));
                         }
                     }
                 })?;
@@ -293,15 +303,24 @@ impl PtySession {
                     }
                     budget -= 1;
                 }
-                Err(_) => break,
+                Err(TryRecvError::Empty | TryRecvError::Closed) => break,
             }
         }
         out
     }
 
-    /// Block until at least one event is available, for use off the UI thread.
-    pub fn next_event(&self) -> Option<SessionEvent> {
-        self.events.recv().ok()
+    /// Await the next event without blocking the calling thread.
+    ///
+    /// The UI layer awaits this in a GPUI task and calls `cx.notify()` when it
+    /// resolves, so a long-running command repaints as it produces output
+    /// rather than waiting for the next keystroke.
+    pub async fn recv(&self) -> Option<SessionEvent> {
+        self.events.recv().await.ok()
+    }
+
+    /// Cloned handle so a task can await events after the session is moved.
+    pub fn event_stream(&self) -> Receiver<SessionEvent> {
+        self.events.clone()
     }
 
     /// Render the current screen.
@@ -336,7 +355,7 @@ impl PtySession {
             dims.cols = self.cols;
             dims.screen = self.rows;
             dims.total = SCROLLBACK_LINES;
-            let snapshot = dims.clone();
+            let snapshot = *dims;
             let mut term = self.handle.term.lock().expect("term poisoned");
             term.resize(snapshot);
         }
@@ -347,10 +366,12 @@ impl PtySession {
             pixel_width: 0,
             pixel_height: 0,
         })?;
-        // Ask the child to redraw at the new size. XTWINOPS is widely ignored;
-        // the cursor-position nudge makes the shell repaint regardless.
-        self.write(b"\x1b[8;0;0t")?;
-        self.write(format!("\x1b[{};{}H", self.rows, self.cols).as_bytes())?;
+
+        // Setting the kernel winsize is enough: the tty layer delivers SIGWINCH
+        // to the foreground process group, and a well-behaved shell redraws
+        // itself. Writing escape sequences here (XTWINOPS or a cursor nudge)
+        // would instead corrupt the user's shell -- we saw the raw codes
+        // echoed into the prompt line.
         Ok(())
     }
 
@@ -434,8 +455,8 @@ pub fn run_command(cmd: &str, cwd: &Path, cols: u16, rows: u16) -> anyhow::Resul
     Ok(String::from_utf8_lossy(&out).to_string())
 }
 
-/// Waker used by the GPUI layer to learn that a repaint is needed without
-/// polling. The reader thread pushes into a channel; the UI drains it.
-pub fn notifier() -> (Sender<SessionEvent>, Receiver<SessionEvent>) {
-    channel()
+/// A standalone event channel, for callers that need to relay events without
+/// owning a session.
+pub fn event_channel() -> (Sender<SessionEvent>, Receiver<SessionEvent>) {
+    async_channel::unbounded()
 }
