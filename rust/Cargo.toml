@@ -1,0 +1,30 @@
+[workspace]
+members = ["crates/ekegai-core", "crates/ekegai-desktop"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/ifubaraboye/ekegai"
+
+[workspace.dependencies]
+# Upstream GPUI, pinned to a single revision. We deliberately do NOT use
+# egoist/zed (Waku's fork) -- see rust/README.md for the reasoning.
+gpui = { git = "https://github.com/zed-industries/zed", rev = "7733b9922665f103abda7c6a3fde6b9dfdc8eba9", default-features = false }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "7733b9922665f103abda7c6a3fde6b9dfdc8eba9" }
+
+alacritty_terminal = { version = "0.26", default-features = false }
+portable-pty = "0.9"
+anyhow = "1"
+parking_lot = "0.12"
+crossbeam-channel = "0.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = "thin"

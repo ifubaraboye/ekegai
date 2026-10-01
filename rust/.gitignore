@@ -1,0 +1,15 @@
+# Build artifacts
+/target
+**/target
+
+# Node leftovers from the TypeScript versions
+node_modules
+/out
+/release
+
+# Local agent/editor scratch
+Ses.md
+*.log
+
+# OS
+.DS_Store

@@ -1,0 +1,21 @@
+[package]
+name = "ekegai-desktop"
+description = "ekegai desktop application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "ekegai"
+path = "src/main.rs"
+
+[dependencies]
+ekegai-core = { path = "../ekegai-core" }
+gpui = { workspace = true }
+anyhow = { workspace = true }
+parking_lot = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gpui_platform = { workspace = true, features = ["wayland", "x11"] }

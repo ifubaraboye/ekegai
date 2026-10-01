@@ -1,0 +1,25 @@
+[package]
+name = "ekegai-core"
+description = "Domain types for ekegai. No GPUI dependency."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+# Off by default: without it, API keys cannot be stored and the agent
+# feature refuses to run rather than falling back to plaintext on disk.
+default = []
+keyring = ["dep:keyring"]
+
+[dependencies]
+alacritty_terminal = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+parking_lot = { workspace = true }
+portable-pty = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+keyring = { version = "3", optional = true }
