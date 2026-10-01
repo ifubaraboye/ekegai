@@ -1484,10 +1484,12 @@ version = "0.1.0"
 dependencies = [
  "alacritty_terminal",
  "anyhow",
+ "chrono",
  "ekegai-core",
  "gpui",
  "gpui_platform",
  "parking_lot",
+ "uuid",
 ]
 
 [[package]]

@@ -3,10 +3,38 @@
 //! Kept separate from the view so the colour math can be unit tested without
 //! a window or a GPU.
 
+use ekegai_core::model::NodeState;
 use ekegai_core::pty::StyledChar;
-use gpui::{Hsla, Rgba, rgb};
+use gpui::{Font, FontWeight, Hsla, Rgba, rgb};
 
 use crate::theme::Theme;
+
+/// A UI font at the given weight, for chrome text drawn with `TextRun`.
+pub fn ui_font(bold: bool) -> Font {
+    Font {
+        family: crate::theme::MONO.into(),
+        weight: if bold { FontWeight::BOLD } else { FontWeight::NORMAL },
+        style: gpui::FontStyle::Normal,
+        features: Default::default(),
+        fallbacks: Some(gpui::FontFallbacks::from_fonts(vec![
+            "JetBrainsMono Nerd Font".to_string(),
+            "DejaVu Sans Mono".to_string(),
+            "Noto Sans Mono".to_string(),
+            "Liberation Mono".to_string(),
+        ])),
+    }
+}
+
+/// Colour for a node's status dot, so the sidebar and terminal agree.
+pub fn status_color(state: NodeState, theme: &Theme) -> Rgba {
+    match state {
+        NodeState::Idle => theme.status_idle,
+        NodeState::Running => theme.status_running,
+        NodeState::Waiting => theme.status_waiting,
+        NodeState::Done => theme.status_idle,
+        NodeState::Error => theme.status_error,
+    }
+}
 
 /// A run of consecutive cells that share styling, so we emit one `TextRun`
 /// per run instead of one element per cell.

@@ -7,6 +7,7 @@
 use gpui::Rems;
 
 /// Base font size in px that one rem corresponds to.
+#[allow(dead_code)]
 pub const BASE_FONT_SIZE: f32 = 16.0;
 
 /// Convert a rem value to a size relative to the active window's rem unit.
@@ -17,6 +18,7 @@ pub fn sp(value: f32) -> Rems {
 /// Convert a rem value to px against a concrete base, for the rare cases
 /// where a rem-derived pixel number is genuinely needed (e.g. row heights
 /// used for list virtualization).
+#[allow(dead_code)]
 pub fn sp_px(value: f32, base_font_size: f32) -> f32 {
     value * base_font_size
 }

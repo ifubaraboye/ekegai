@@ -12,6 +12,10 @@ use gpui::{Rgba, rgb};
 
 use crate::scaling::sp;
 
+/// The font family used across the UI. Monospace throughout: the terminal
+/// places glyphs by cell, and a proportional sidebar would misalign with it.
+pub const MONO: &str = "Liberation Mono";
+
 pub const SIDEBAR_WIDTH: f32 = 17.0;
 pub const SIDEBAR_MIN_WIDTH: f32 = 12.0;
 pub const SIDEBAR_MAX_WIDTH: f32 = 28.0;

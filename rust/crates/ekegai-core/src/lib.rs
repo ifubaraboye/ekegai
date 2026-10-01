@@ -9,8 +9,8 @@ pub mod secrets;
 pub mod session;
 
 pub use model::{
-    AgentConfig, AgentProvider, Edge, Graph, NodeState, Project, SessionState, SplitLayout,
-    TerminalNode, Workspace,
+    AgentConfig, AgentProvider, Edge, Graph, NodeId, NodeState, Project, ProjectId, SessionState,
+    SplitLayout, TerminalNode, Workspace, WorkspaceId,
 };
 pub use pty::{Frame, PtySession, Row, SessionEvent, StyledChar};
 pub use session::SessionStore;

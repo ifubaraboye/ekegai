@@ -13,6 +13,8 @@ path = "src/main.rs"
 
 [dependencies]
 alacritty_terminal = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
 ekegai-core = { path = "../ekegai-core" }
 gpui = { workspace = true }
 anyhow = { workspace = true }

@@ -14,10 +14,18 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// Identifier for a [`Project`]. An alias rather than a newtype so it stays
+/// interchangeable with the raw `Uuid` stored in serialized sessions.
+pub type ProjectId = Uuid;
+/// Identifier for a [`TerminalNode`].
+pub type NodeId = Uuid;
+/// Identifier for a [`Workspace`].
+pub type WorkspaceId = Uuid;
+
 /// A project directory opened in the sidebar.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Project {
-    pub id: Uuid,
+    pub id: ProjectId,
     pub path: PathBuf,
     pub name: String,
     #[serde(default)]
@@ -108,8 +116,8 @@ pub struct AgentConfig {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TerminalNode {
-    pub id: Uuid,
-    pub project_id: Uuid,
+    pub id: NodeId,
+    pub project_id: ProjectId,
     /// Stable handle for the live PTY. Regenerated on session restore, since
     /// a PTY from a previous process cannot be reattached.
     pub pty_id: Uuid,
@@ -124,7 +132,7 @@ pub struct TerminalNode {
 }
 
 impl TerminalNode {
-    pub fn new(project_id: Uuid, cwd: PathBuf, label: impl Into<String>) -> Self {
+    pub fn new(project_id: ProjectId, cwd: PathBuf, label: impl Into<String>) -> Self {
         Self {
             id: Uuid::new_v4(),
             project_id,
@@ -142,8 +150,8 @@ impl TerminalNode {
 /// A directed dependency between nodes: `source` feeds `target`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge {
-    pub source: Uuid,
-    pub target: Uuid,
+    pub source: NodeId,
+    pub target: NodeId,
 }
 
 /// How a workspace's panes are arranged.
@@ -158,10 +166,10 @@ pub enum SplitLayout {
 /// A named group of panes sharing a working directory.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Workspace {
-    pub id: Uuid,
+    pub id: WorkspaceId,
     pub name: String,
     pub cwd: PathBuf,
-    pub pane_ids: Vec<Uuid>,
+    pub pane_ids: Vec<NodeId>,
     pub split_layout: SplitLayout,
     #[serde(default)]
     pub has_unread: bool,
@@ -182,7 +190,7 @@ pub struct SessionState {
     #[serde(default)]
     pub workspaces: Vec<Workspace>,
     #[serde(default)]
-    pub active_workspace: Option<Uuid>,
+    pub active_workspace: Option<WorkspaceId>,
     #[serde(default)]
     pub last_saved: i64,
 }
@@ -198,7 +206,7 @@ pub struct Graph {
 impl Graph {
     /// Nodes reachable from `id` by following outgoing edges, in breadth-first
     /// order. Cycles are visited once and do not hang.
-    pub fn downstream_of(&self, id: Uuid) -> Vec<&TerminalNode> {
+    pub fn downstream_of(&self, id: NodeId) -> Vec<&TerminalNode> {
         let mut seen: Vec<Uuid> = vec![id];
         let mut queue = std::collections::VecDeque::from([id]);
         let mut out = Vec::new();
@@ -219,7 +227,7 @@ impl Graph {
     }
 
     /// Nodes that feed `id`, i.e. the reverse of [`Graph::downstream_of`].
-    pub fn upstream_of(&self, id: Uuid) -> Vec<&TerminalNode> {
+    pub fn upstream_of(&self, id: NodeId) -> Vec<&TerminalNode> {
         let mut seen: Vec<Uuid> = vec![id];
         let mut queue = std::collections::VecDeque::from([id]);
         let mut out = Vec::new();
@@ -239,7 +247,7 @@ impl Graph {
         out
     }
 
-    pub fn remove_node(&mut self, id: Uuid) -> Option<TerminalNode> {
+    pub fn remove_node(&mut self, id: NodeId) -> Option<TerminalNode> {
         // Drop any edges touching the node so the graph cannot keep dangling
         // references, mirroring the TypeScript `deleteNode` behaviour.
         self.edges.retain(|e| e.source != id && e.target != id);
