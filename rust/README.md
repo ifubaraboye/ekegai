@@ -85,8 +85,10 @@ CometLake-U iGPU (Mesa Vulkan).
 - [x] **M0** GPUI compiles and renders on this machine (reference app verified)
 - [x] **M1a** PTY + terminal emulation, 20 tests green
 - [x] **M1b** GPUI terminal view: grid rendered with ANSI styling, keystroke
-      translation, resize, event-driven repaint. 52 tests, clippy clean.
-- [ ] **M2** Waku-style sidebar
+      translation, resize, event-driven repaint.
+- [x] **M2** Waku-style sidebar: search, action row, collapsible project
+      groups with a guide rail, status dots, show-more pagination. 64 tests,
+      clippy clean.
 - [ ] **M3** Multi-pane + persistence wired to the UI
 - [ ] **M4** Agent orchestration (providers, graph, keyring)
 - [ ] **M5** Production gates: packaging
@@ -100,15 +102,20 @@ the rendered grid, including ANSI colour, truecolor, bold, exit codes, and
 process cleanup on drop.
 
 Verified by **test only**: a live keystroke travelling through the compositor
-into `on_key_down` and out to the PTY. The translation half is tested with real
-`gpui::Keystroke` values, but driving a Wayland window for the full path was
-not reliable here, so that last hop is unproven.
+into `on_key_down` and out to the PTY, and clicking a sidebar row to switch
+terminals. Both are covered by tests against real `gpui::Keystroke` values and
+the row model, but driving a Wayland window for the full path was not reliable
+here, so those last hops are unproven by hand.
 
-Known gaps in M1b:
+Known gaps so far:
 
 - No scrollback view, selection, or copy/paste. `alacritty_terminal` keeps the
   history; nothing reads it yet.
 - Underline is parsed but not painted (`TextRun.underline` is always `None`).
 - The window opens fullscreen; the requested 900x620 bounds are not honoured
   on this compositor.
-- One shell per window. No panes, no sidebar yet.
+- The search field renders the query but does not accept typing yet, and
+  "New project" has no folder picker behind it.
+- Keyboard selection in the sidebar does not scroll itself into view; that
+  needs list virtualization.
+- The sidebar is not yet resizable; its width is fixed in rems.
