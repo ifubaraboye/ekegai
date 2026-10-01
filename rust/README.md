@@ -83,9 +83,32 @@ CometLake-U iGPU (Mesa Vulkan).
 ## Status
 
 - [x] **M0** GPUI compiles and renders on this machine (reference app verified)
-- [x] **M1a** PTY + terminal emulation working, 20 tests green
-- [ ] **M1b** GPUI terminal view: render the grid, keyboard in, resize
+- [x] **M1a** PTY + terminal emulation, 20 tests green
+- [x] **M1b** GPUI terminal view: grid rendered with ANSI styling, keystroke
+      translation, resize, event-driven repaint. 52 tests, clippy clean.
 - [ ] **M2** Waku-style sidebar
 - [ ] **M3** Multi-pane + persistence wired to the UI
 - [ ] **M4** Agent orchestration (providers, graph, keyring)
-- [ ] **M5** Production gates: fmt, clippy, packaging
+- [ ] **M5** Production gates: packaging
+
+### What is verified, and how
+
+Verified by **running** it: the app opens a window, spawns the user's shell,
+renders the prompt and status bar, and sizes the grid to the window. The PTY
+round-trip is proven by integration tests that spawn real shells and assert on
+the rendered grid, including ANSI colour, truecolor, bold, exit codes, and
+process cleanup on drop.
+
+Verified by **test only**: a live keystroke travelling through the compositor
+into `on_key_down` and out to the PTY. The translation half is tested with real
+`gpui::Keystroke` values, but driving a Wayland window for the full path was
+not reliable here, so that last hop is unproven.
+
+Known gaps in M1b:
+
+- No scrollback view, selection, or copy/paste. `alacritty_terminal` keeps the
+  history; nothing reads it yet.
+- Underline is parsed but not painted (`TextRun.underline` is always `None`).
+- The window opens fullscreen; the requested 900x620 bounds are not honoured
+  on this compositor.
+- One shell per window. No panes, no sidebar yet.
