@@ -65,52 +65,56 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Waku's dark palette, taken from its `theme.rs` dark(). Neutral graphite
+    /// surfaces, coral reserved for meaning.
     pub fn dark() -> Self {
         Self {
-            canvas: rgb(0x11131a),
-            surface: rgb(0x16181f),
-            surface_raised: rgb(0x1e2130),
-            border: rgb(0x2a2e3d),
-            border_focused: rgb(0x7aa2f7),
-            text: rgb(0xc0caf5),
-            text_muted: rgb(0x565f89),
-            text_accent: rgb(0x7aa2f7),
-            focus_ring: rgb(0xa8c6ff),
-            guide_rail: rgb(0x262a38),
+            canvas: rgb(0x1A1A1A),
+            surface: rgb(0x181818),
+            surface_raised: rgb(0x232323),
+            border: rgb(0x2a2a2a),
+            border_focused: rgb(0xE2795B),
+            text: rgb(0xE2E2E2),
+            text_muted: rgb(0x7D7D7D),
+            text_accent: rgb(0xE2795B),
+            focus_ring: rgb(0xE2795B),
+            guide_rail: rgb(0x2a2a2a),
 
-            status_idle: rgb(0x9ece6a),
-            status_running: rgb(0xe0af68),
-            status_waiting: rgb(0x4c9eeb),
-            status_error: rgb(0xf7768e),
+            status_idle: rgb(0x62C987),
+            status_running: rgb(0xE0B36A),
+            status_waiting: rgb(0xE2795B),
+            status_error: rgb(0xE2726A),
 
-            term_foreground: rgb(0xc0caf5),
-            term_background: rgb(0x11131a),
-            term_cursor: rgb(0x7aa2f7),
+            term_foreground: rgb(0xE2E2E2),
+            term_background: rgb(0x151515),
+            term_cursor: rgb(0xE2795B),
             term_selection: rgb(0x3b4261),
         }
     }
 
+    /// Waku's light palette, matching the reference. Canvas/sidebar/surface
+    /// are the exact hex values from its `theme.rs` light().
     pub fn light() -> Self {
         Self {
-            canvas: rgb(0xf7f8fa),
-            surface: rgb(0xffffff),
-            surface_raised: rgb(0xf0f2f6),
-            border: rgb(0xd8dce4),
-            border_focused: rgb(0x3b6fd4),
-            text: rgb(0x1a1c22),
-            text_muted: rgb(0x767c8a),
-            text_accent: rgb(0x3b6fd4),
-            focus_ring: rgb(0x1f5fbf),
-            guide_rail: rgb(0xe4e7ee),
+            canvas: rgb(0xF6F5F6),
+            surface: rgb(0xF3F3F3),
+            surface_raised: rgb(0xECECEC),
+            border: rgb(0xE3E3E3),
+            border_focused: rgb(0xC85F44),
+            text: rgb(0x242424),
+            text_muted: rgb(0x858585),
+            text_accent: rgb(0xC85F44),
+            focus_ring: rgb(0xC85F44),
+            guide_rail: rgb(0xE6E6E6),
 
-            status_idle: rgb(0x2f7d32),
-            status_running: rgb(0x9a6400),
-            status_waiting: rgb(0x1f6fb2),
-            status_error: rgb(0xc0263c),
+            status_idle: rgb(0x2F8F52),
+            status_running: rgb(0xA66B20),
+            status_waiting: rgb(0xC85F44),
+            status_error: rgb(0xC64A42),
 
-            term_foreground: rgb(0x1a1c22),
-            term_background: rgb(0xf7f8fa),
-            term_cursor: rgb(0x3b6fd4),
+            term_foreground: rgb(0x242424),
+            term_background: rgb(0xFFFFFF),
+            term_cursor: rgb(0xC85F44),
             term_selection: rgb(0xc9d8f0),
         }
     }
@@ -118,7 +122,8 @@ impl Theme {
 
 impl Default for Theme {
     fn default() -> Self {
-        Self::dark()
+        // The reference is light mode.
+        Self::light()
     }
 }
 

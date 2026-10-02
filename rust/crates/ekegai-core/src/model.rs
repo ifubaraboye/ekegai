@@ -129,6 +129,9 @@ pub struct TerminalNode {
     pub agent: Option<AgentConfig>,
     /// Canvas position, in the graph's coordinate space.
     pub position: (f32, f32),
+    /// Shown under "Pinned" in the sidebar rather than under a project.
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 impl TerminalNode {
@@ -143,6 +146,7 @@ impl TerminalNode {
             state: NodeState::Idle,
             agent: None,
             position: (0.0, 0.0),
+            pinned: false,
         }
     }
 }

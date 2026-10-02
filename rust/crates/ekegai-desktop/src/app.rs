@@ -61,7 +61,8 @@ fn seed_projects() -> Vec<(Project, Vec<TerminalNode>)> {
         if out.iter().any(|(p, _): &(Project, _)| p.path == root) {
             continue;
         }
-        let project = Project::new(root.clone());
+        let mut project = Project::new(root.clone());
+        project.git_branch = Some("main".into());
         let node = TerminalNode::new(project.id, root.clone(), "shell");
         out.push((project, vec![node]));
         if out.len() == 2 {
@@ -73,7 +74,7 @@ fn seed_projects() -> Vec<(Project, Vec<TerminalNode>)> {
 
 impl AppShell {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let theme = Theme::dark();
+        let theme = Theme::light();
         let focus_handle = cx.focus_handle();
         let sidebar = cx.new(Sidebar::new);
 
